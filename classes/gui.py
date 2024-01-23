@@ -62,18 +62,53 @@ class Gui(ctk.CTk):
     def create_homeFrame(self) -> None:
         self.homeFrame = ctk.CTkFrame(self, corner_radius = 0, fg_color="transparent")
         self.homeFrame.grid_columnconfigure(0, weight=1)
+
+        self.homeFrameLabel = ctk.CTkLabel(self.homeFrame, text="Home Page", compound="left", font=ctk.CTkFont(size=55, weight="bold"))
+        self.homeFrameLabel.grid(row=0, column=0, padx=20, pady=20)  
         
     def create_listFrame(self) -> None:
         self.listFrame = ctk.CTkFrame(self, corner_radius = 0, fg_color="transparent")
         self.listFrame.grid_columnconfigure(0, weight=1)
+
+        self.listFrameLabel = ctk.CTkLabel(self.listFrame, text="Your Shelf", compound="left", font=ctk.CTkFont(size=55, weight="bold"))
+        self.listFrameLabel.grid(row=0, column=0, padx=20, pady=20)  
         
     def create_addFrame(self) -> None:
         self.addFrame = ctk.CTkFrame(self, corner_radius = 0, fg_color="transparent")
-        self.addFrame.grid_columnconfigure(0, weight=1)      
+        self.addFrame.grid_columnconfigure(0, weight=1) 
+
+        self.addFrameLabel = ctk.CTkLabel(self.addFrame, text="Add/Edit", compound="left", font=ctk.CTkFont(size=55, weight="bold"))
+        self.addFrameLabel.grid(row=0, column=0, padx=20, pady=20)       
         
     def create_settingsFrame(self) -> None:
         self.settingsFrame = ctk.CTkFrame(self, corner_radius = 0, fg_color="transparent")
-        self.settingsFrame.grid_columnconfigure(0, weight=1)              
+        self.settingsFrame.grid_columnconfigure(0, weight=1) 
+
+        self.settingsFrameLabel = ctk.CTkLabel(self.settingsFrame, text="Settings", font=ctk.CTkFont(size=55, weight="bold"))
+        self.settingsFrameLabel.grid(row=0, column=0, padx=20, pady=20) 
+
+        self.settingsFrameComboboxLabel = ctk.CTkLabel(self.settingsFrame, text="Set appearance mode:", compound="left", font=ctk.CTkFont(size=20, weight="bold"))
+        self.settingsFrameComboboxLabel.grid(row=1, column=0, sticky="w", padx=20, pady=20)
+
+        self.displayOptionMenu = ctk.CTkOptionMenu(self.settingsFrame, values=["Light", "Dark", "System"], command=self.displayOptionMenu_callback)      
+        self.displayOptionMenu.grid(row=1, column=0, sticky="w", padx=260, pady=20)
+
+        self.displayOptionMenu.set("System")
+
+        self.editProfileButton = ctk.CTkButton(self.settingsFrame, text="Edit Profiles", command=self.editProfileButton_handler)
+        self.editProfileButton.grid(row=3, column=0, sticky="w", padx=20, pady=20)
+
+        self.resetDbButton = ctk.CTkButton(self.settingsFrame, text="Reset Database", command=self.resetDbButton_handler)
+        self.resetDbButton.grid(row=4, column=0, sticky="w", padx=20, pady=20)
+
+    def displayOptionMenu_callback(self, choice) -> None:
+        ctk.set_appearance_mode(choice.lower())
+
+    def editProfileButton_handler(self) -> None:
+        print("editProfileButton_handler")
+
+    def resetDbButton_handler(self) -> None:
+        print("resetDbButton_handler")
 
     #Navigational button events    
     def home_nav_button_event(self) -> None:
