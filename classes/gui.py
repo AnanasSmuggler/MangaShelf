@@ -11,6 +11,7 @@ class Gui(ctk.CTk):
         
         self.title("Manga Shelf")
         self.geometry("1280x720")
+        self.resizable(width=False, height=False)
         
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
@@ -64,7 +65,12 @@ class Gui(ctk.CTk):
         self.homeFrame.grid_columnconfigure(0, weight=1)
 
         self.homeFrameLabel = ctk.CTkLabel(self.homeFrame, text="Home Page", compound="left", font=ctk.CTkFont(size=55, weight="bold"))
-        self.homeFrameLabel.grid(row=0, column=0, padx=20, pady=20)  
+        self.homeFrameLabel.grid(row=0, column=0, padx=20, pady=20)
+        
+        if self.database.no_users():
+            self.homeFrameLabel = ctk.CTkLabel(self.homeFrame, text="There are currently no users in this MangaShelf. Let's change it:", compound="left", font=ctk.CTkFont(size=25, weight="bold"))
+            self.homeFrameLabel.grid(row=1, column=0, padx=20, pady=20)
+              
         
     def create_listFrame(self) -> None:
         self.listFrame = ctk.CTkFrame(self, corner_radius = 0, fg_color="transparent")
@@ -78,7 +84,19 @@ class Gui(ctk.CTk):
         self.addFrame.grid_columnconfigure(0, weight=1) 
 
         self.addFrameLabel = ctk.CTkLabel(self.addFrame, text="Add/Edit", compound="left", font=ctk.CTkFont(size=55, weight="bold"))
-        self.addFrameLabel.grid(row=0, column=0, padx=20, pady=20)       
+        self.addFrameLabel.grid(row=0, column=0, padx=20, pady=20)  
+
+        self.addSeriesButton = ctk.CTkButton(self.addFrame, text="Add Series", command=self.editProfileButton_handler)
+        self.addSeriesButton.grid(row=1, column=0, sticky="w", padx=330, pady=20)
+
+        self.editSeriesButton = ctk.CTkButton(self.addFrame, text="Edit Series", command=self.resetDbButton_handler)
+        self.editSeriesButton.grid(row=1, column=0, sticky="e", padx=330, pady=20)     
+        
+        self.addVolumeButton = ctk.CTkButton(self.addFrame, text="Add Volume", command=self.editProfileButton_handler)
+        self.addVolumeButton.grid(row=2, column=0, sticky="w", padx=330, pady=20)
+
+        self.editVolumeButton = ctk.CTkButton(self.addFrame, text="Edit Series", command=self.resetDbButton_handler)
+        self.editVolumeButton.grid(row=2, column=0, sticky="e", padx=330, pady=20)     
         
     def create_settingsFrame(self) -> None:
         self.settingsFrame = ctk.CTkFrame(self, corner_radius = 0, fg_color="transparent")

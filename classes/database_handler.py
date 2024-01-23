@@ -10,7 +10,6 @@ class Database():
                 self.connect()
                 if self.is_db_empty():
                     self.create_db_structure()
-                    self.test_select()
                     
         #Method connects with database       
         def connect(self) -> None:
@@ -58,15 +57,18 @@ class Database():
                                 (id INT PRIMARY KEY NOT NULL,
                                 title TEXT NOT NULL,
                                 series_id INT NOT NULL,
-                                read INT NOT NULL,
                                 front_page BLOB NOT NULL,
                                 FOREIGN KEY (series_id) REFERENCES series(id)
                 );''')
                 self.cursor.execute('''CREATE TABLE IF NOT EXISTS collections
                                 (id INT PRIMARY KEY NOT NULL,
-                                volume_id TEXT NOT NULL,
+                                series_id INT NOT NULL,
+                                volume_id INT NOT NULL,
                                 user_id INT NOT NULL,
+                                read INT NOT NULL,
+                                borrowed INT NOT NULL,
                                 borrower INT,
+                                FOREIGN KEY (series_id) REFERENCES series(id),
                                 FOREIGN KEY (volume_id) REFERENCES volumes(id),
                                 FOREIGN KEY (user_id) REFERENCES user(id),
                                 FOREIGN KEY (borrower) REFERENCES user(id)
@@ -74,16 +76,13 @@ class Database():
             except sqlite3.Error as e:
                 print(e)
         
-        #Method to test db        
-        def test_select(self) -> None:
+        #Method returns True if there are no users in users table        
+        def no_users(self) -> bool:
             try:
-                self.cursor.execute(f'SELECT * FROM users;')
-                rows = self.cursor.fetchall()
-                
-                if self.cursor.rowcount > 0:
-                    for row in rows:
-                        print(row)
-                else:
-                    print("test")
+                usersCountSelect = self.cursor.execute('''SELECT * FROM users LIMIT 1;''')
+                usersCount = usersCountSelect.fetchall()
+                return True if len(usersCount) == 0 else False
             except sqlite3.Error as e:
                 print(e)
+                
+            return True
