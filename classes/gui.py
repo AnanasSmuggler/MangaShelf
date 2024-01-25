@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from CTkMessagebox import CTkMessagebox
 import os
 from PIL import Image
 from classes.database_handler import Database
@@ -70,7 +71,9 @@ class Gui(ctk.CTk):
         if self.database.no_users():
             self.homeFrameLabel = ctk.CTkLabel(self.homeFrame, text="There are currently no users in this MangaShelf. Let's change it:", compound="left", font=ctk.CTkFont(size=25, weight="bold"))
             self.homeFrameLabel.grid(row=1, column=0, padx=20, pady=20)
-              
+
+            self.addUserHomeButton = ctk.CTkButton(self.homeFrame, text="Add User", command=self.add_user_menu)
+            self.addUserHomeButton.grid(row=2, column=0, padx=20, pady=20)             
         
     def create_listFrame(self) -> None:
         self.listFrame = ctk.CTkFrame(self, corner_radius = 0, fg_color="transparent")
@@ -84,20 +87,27 @@ class Gui(ctk.CTk):
         self.addFrame.grid_columnconfigure(0, weight=1) 
 
         self.addFrameLabel = ctk.CTkLabel(self.addFrame, text="Add/Edit", compound="left", font=ctk.CTkFont(size=55, weight="bold"))
-        self.addFrameLabel.grid(row=0, column=0, padx=20, pady=20)  
+        self.addFrameLabel.grid(row=0, column=0, padx=20, pady=20)
 
-        self.addSeriesButton = ctk.CTkButton(self.addFrame, text="Add Series", command=self.editProfileButton_handler)
-        self.addSeriesButton.grid(row=1, column=0, sticky="w", padx=330, pady=20)
+        if self.database.no_users():
+            self.addFrameNoUserLabel = ctk.CTkLabel(self.addFrame, text="Let's add first user to MangaShelf: ", compound="left", font=ctk.CTkFont(size=25, weight="bold"))
+            self.addFrameNoUserLabel.grid(row=1, column=0, padx=20, pady=20)
 
-        self.editSeriesButton = ctk.CTkButton(self.addFrame, text="Edit Series", command=self.resetDbButton_handler)
-        self.editSeriesButton.grid(row=1, column=0, sticky="e", padx=330, pady=20)     
-        
-        self.addVolumeButton = ctk.CTkButton(self.addFrame, text="Add Volume", command=self.editProfileButton_handler)
-        self.addVolumeButton.grid(row=2, column=0, sticky="w", padx=330, pady=20)
+            self.addUserButton = ctk.CTkButton(self.addFrame, text="Add User", command=self.add_user_menu)
+            self.addUserButton.grid(row=2, column=0, padx=20, pady=20)
+        else:  
+            self.addSeriesButton = ctk.CTkButton(self.addFrame, text="Add Series", command=self.editProfileButton_handler)
+            self.addSeriesButton.grid(row=1, column=0, sticky="w", padx=330, pady=20)
 
-        self.editVolumeButton = ctk.CTkButton(self.addFrame, text="Edit Series", command=self.resetDbButton_handler)
-        self.editVolumeButton.grid(row=2, column=0, sticky="e", padx=330, pady=20)     
-        
+            self.editSeriesButton = ctk.CTkButton(self.addFrame, text="Edit Series", command=self.resetDbButton_handler)
+            self.editSeriesButton.grid(row=1, column=0, sticky="e", padx=330, pady=20)     
+            
+            self.addVolumeButton = ctk.CTkButton(self.addFrame, text="Add Volume", command=self.editProfileButton_handler)
+            self.addVolumeButton.grid(row=2, column=0, sticky="w", padx=330, pady=20)
+
+            self.editVolumeButton = ctk.CTkButton(self.addFrame, text="Edit Series", command=self.resetDbButton_handler)
+            self.editVolumeButton.grid(row=2, column=0, sticky="e", padx=330, pady=20)     
+            
     def create_settingsFrame(self) -> None:
         self.settingsFrame = ctk.CTkFrame(self, corner_radius = 0, fg_color="transparent")
         self.settingsFrame.grid_columnconfigure(0, weight=1) 
@@ -127,6 +137,50 @@ class Gui(ctk.CTk):
 
     def resetDbButton_handler(self) -> None:
         print("resetDbButton_handler")
+
+    def is_square_image(self, file_path: str) -> bool:
+        try:
+            with Image.open(file_path) as img:
+                width, height = img.size
+                return width == height
+        except Exception as e:
+            print(f"Error: {e}")
+            return False
+
+    def browse_image(self)-> None:
+        filename = ctk.filedialog.askopenfilename(initialdir="/", title="Select Image", filetypes=(("Image files", "*.png;*.jpg;*.jpeg;*.gif"), ("all files", "*.*")))
+        if filename:
+            if self.is_square_image(filename):
+                self.userImageEntryVar.set(filename)
+            else:
+                CTkMessagebox(title="Error", message="Please provide squared image!", icon="cancel")
+
+
+    def add_user_menu(self) -> None:
+        addUserWindow = ctk.CTkToplevel(self)
+        addUserWindow.title("Add User")
+        addUserWindow.geometry("600x400")
+
+        addUserWindowLabel = ctk.CTkLabel(addUserWindow, text="Add User:", font=ctk.CTkFont(size=35, weight="bold"))
+        addUserWindowLabel.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+
+        addUserWindowNameLabel = ctk.CTkLabel(addUserWindow, text="User name:", font=ctk.CTkFont(size=25))
+        addUserWindowNameLabel.grid(row=1, column=0, padx=20, pady=20)
+
+        userNamePrompt = ctk.CTkEntry(addUserWindow, corner_radius=3.5)
+        userNamePrompt.grid(row=1, column=1, sticky="nsew", padx=20, pady=20)
+
+        addUserWindowImageLabel = ctk.CTkLabel(addUserWindow, text="Profile image:", font=ctk.CTkFont(size=25))
+        addUserWindowImageLabel.grid(row=2, column=0, padx=20, pady=20)
+
+        self.userImageEntryVar = ctk.StringVar()
+        addUserWindowImageEntry = ctk.CTkEntry(addUserWindow, textvariable=self.userImageEntryVar, state="readonly")
+        addUserWindowImageEntry.grid(row=2, column=1, sticky="nsew", padx=20, pady=20)
+
+        addUserImageBrowseButton = ctk.CTkButton(addUserWindow, text="Browse Image", command=self.browse_image)
+        addUserImageBrowseButton.grid(row=2, column=2, sticky="nsew", padx=20, pady=20)
+
+        addUserSubmitButton = ctk.CTkButton(addUserWindow, text="Submit")
 
     #Navigational button events    
     def home_nav_button_event(self) -> None:

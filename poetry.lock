@@ -70,6 +70,21 @@ files = [
 ]
 
 [[package]]
+name = "ctkmessagebox"
+version = "2.5"
+description = "A modern messagebox for customtkinter"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "CTkMessagebox-2.5-py3-none-any.whl", hash = "sha256:b3220c57bca16cec51d310e8d7cad9383dc36b30c943e5913f2e1f1644b6332e"},
+    {file = "CTkMessagebox-2.5.tar.gz", hash = "sha256:155c20e6ce0a1fd6ba43079db43e7f7bc124018f58141a15c993668aef6dae14"},
+]
+
+[package.dependencies]
+customtkinter = "*"
+pillow = "*"
+
+[[package]]
 name = "customtkinter"
 version = "5.2.2"
 description = "Create modern looking GUIs with Python"
@@ -283,4 +298,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "e3816b0cc64c8699ce9f667a060a2e9458c93aa770278a923c6ce1c125a5ab8c"
+content-hash = "ff1ff302b721c4a0c25f2a70f739167d72dd1029d3cd458ef8bf0422583037aa"
