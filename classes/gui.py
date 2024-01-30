@@ -8,7 +8,7 @@ class Gui(ctk.CTk):
     def __init__(self, imgPth: str, dbPth: str) -> None:
         super().__init__()
         
-        self.database = Database(dbPth)
+        self.database = Database(dbPth, imgPth)
         
         self.title("Manga Shelf")
         self.geometry("1280x720")
@@ -73,14 +73,43 @@ class Gui(ctk.CTk):
             self.homeFrameLabel.grid(row=1, column=0, padx=20, pady=20)
 
             self.addUserHomeButton = ctk.CTkButton(self.homeFrame, text="Add User", command=self.add_user_menu)
-            self.addUserHomeButton.grid(row=2, column=0, padx=20, pady=20)             
+            self.addUserHomeButton.grid(row=2, column=0, padx=20, pady=20) 
+        else:
+            userData = self.database.get_from_users()
+            self.ppImgPath = os.path.join(self.imagePath, f"{userData[0]}PP.png")
+            if not os.path.exists(self.ppImgPath):
+                self.database.write_to_file(userData[1], self.ppImgPath)
+            self.currUserProfilePicture = ctk.CTkImage(light_image=Image.open(self.ppImgPath), size=(250,250))
+            self.currUserProfilePictureLabel = ctk.CTkLabel(self.homeFrame, image=self.currUserProfilePicture, text="", compound="left")
+            self.currUserProfilePictureLabel.grid(row=1, column=0, padx=20, pady=5, sticky="w")
+            
+            self.userNameLabel = ctk.CTkLabel(self.homeFrame, text=userData[0], compound="left", font=ctk.CTkFont(size=25, weight="bold"))
+            self.userNameLabel.grid(row=2, column=0, sticky="w", padx=20, pady=5)
+            
+            self.seriesAmountLabel = ctk.CTkLabel(self.homeFrame, text=f"Series on shelf: {userData[2]}", compound="left", font=ctk.CTkFont(size=20, weight="bold"))
+            self.seriesAmountLabel.grid(row=3, column=0, sticky="w", padx=20, pady=10)
+            
+            self.volumesAmountLabel = ctk.CTkLabel(self.homeFrame, text=f"Volumes on shelf: {userData[3]}", compound="left", font=ctk.CTkFont(size=20, weight="bold"))
+            self.volumesAmountLabel.grid(row=4, column=0, sticky="w", padx=20, pady=10)
+            
+            self.homeOptionMenuLabel = ctk.CTkLabel(self.homeFrame, text=f"Change user: ", compound="left", font=ctk.CTkFont(size=20, weight="bold"))
+            self.homeOptionMenuLabel.grid(row=5, column=0, sticky="w", padx=20, pady=10)
+            
+            self.homeOptionMenu = ctk.CTkOptionMenu(self.homeFrame, width=150, values=self.database.get_all_user_names(), command=self.homeMenu_callback)      
+            self.homeOptionMenu.grid(row=6, column=0, sticky="w", padx=20)
+            
+            
         
     def create_listFrame(self) -> None:
         self.listFrame = ctk.CTkFrame(self, corner_radius = 0, fg_color="transparent")
         self.listFrame.grid_columnconfigure(0, weight=1)
 
         self.listFrameLabel = ctk.CTkLabel(self.listFrame, text="Your Shelf", compound="left", font=ctk.CTkFont(size=55, weight="bold"))
-        self.listFrameLabel.grid(row=0, column=0, padx=20, pady=20)  
+        self.listFrameLabel.grid(row=0, column=0, padx=20, pady=20)
+        
+        if self.database.currentUserId == -1:
+            self.listFrameNoUserLabel = ctk.CTkLabel(self.listFrame, text="No user selected", compound="left", font=ctk.CTkFont(size=25, weight="bold"))
+            self.listFrameNoUserLabel.grid(row=1, column=0, padx=20, pady=20)
         
     def create_addFrame(self) -> None:
         self.addFrame = ctk.CTkFrame(self, corner_radius = 0, fg_color="transparent")
@@ -123,11 +152,20 @@ class Gui(ctk.CTk):
 
         self.displayOptionMenu.set("System")
 
+        self.settingsAddProfileButton = ctk.CTkButton(self.settingsFrame, text="Add Profile", command=self.add_user_menu)
+        self.settingsAddProfileButton.grid(row=3, column=0, sticky="w", padx=20, pady=20)
+
         self.editProfileButton = ctk.CTkButton(self.settingsFrame, text="Edit Profiles", command=self.editProfileButton_handler)
-        self.editProfileButton.grid(row=3, column=0, sticky="w", padx=20, pady=20)
+        self.editProfileButton.grid(row=3, column=0, sticky="w", padx=180, pady=20)
 
         self.resetDbButton = ctk.CTkButton(self.settingsFrame, text="Reset Database", command=self.resetDbButton_handler)
         self.resetDbButton.grid(row=4, column=0, sticky="w", padx=20, pady=20)
+
+    def homeMenu_callback(self, choice) -> None:
+        self.database.currentUserId = self.database.get_user_id_by_user_name(choice)
+        self.refresh_home_frame()
+        self.homeOptionMenu.set(choice)
+        
 
     def displayOptionMenu_callback(self, choice) -> None:
         ctk.set_appearance_mode(choice.lower())
@@ -137,6 +175,15 @@ class Gui(ctk.CTk):
 
     def resetDbButton_handler(self) -> None:
         print("resetDbButton_handler")
+
+    def refresh_home_frame(self) -> None:
+        self.homeFrame.destroy()
+        self.create_homeFrame()
+        self.select_frame_by_name("home")
+        
+    def refresh_add_frame(self) -> None:
+        self.addFrame.destroy()
+        self.create_addFrame()
 
     def is_square_image(self, file_path: str) -> bool:
         try:
@@ -157,31 +204,52 @@ class Gui(ctk.CTk):
 
 
     def add_user_menu(self) -> None:
-        addUserWindow = ctk.CTkToplevel(self)
-        addUserWindow.title("Add User")
-        addUserWindow.geometry("600x400")
+        self.addUserWindow = ctk.CTkToplevel(self)
+        self.addUserWindow.title("Add User")
+        self.addUserWindow.geometry("600x400")
+        self.addUserWindow.grab_set()
 
-        addUserWindowLabel = ctk.CTkLabel(addUserWindow, text="Add User:", font=ctk.CTkFont(size=35, weight="bold"))
-        addUserWindowLabel.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+        self.addUserWindowLabel = ctk.CTkLabel(self.addUserWindow, text="Add User:", font=ctk.CTkFont(size=35, weight="bold"))
+        self.addUserWindowLabel.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
 
-        addUserWindowNameLabel = ctk.CTkLabel(addUserWindow, text="User name:", font=ctk.CTkFont(size=25))
-        addUserWindowNameLabel.grid(row=1, column=0, padx=20, pady=20)
+        self.addUserWindowNameLabel = ctk.CTkLabel(self.addUserWindow, text="User name:", font=ctk.CTkFont(size=25))
+        self.addUserWindowNameLabel.grid(row=1, column=0, padx=20, pady=20)
 
-        userNamePrompt = ctk.CTkEntry(addUserWindow, corner_radius=3.5)
+        userNamePrompt = ctk.CTkEntry(self.addUserWindow, corner_radius=3.5)
         userNamePrompt.grid(row=1, column=1, sticky="nsew", padx=20, pady=20)
 
-        addUserWindowImageLabel = ctk.CTkLabel(addUserWindow, text="Profile image:", font=ctk.CTkFont(size=25))
-        addUserWindowImageLabel.grid(row=2, column=0, padx=20, pady=20)
+        self.addUserWindowImageLabel = ctk.CTkLabel(self.addUserWindow, text="Profile image:", font=ctk.CTkFont(size=25))
+        self.addUserWindowImageLabel.grid(row=2, column=0, padx=20, pady=20)
 
         self.userImageEntryVar = ctk.StringVar()
-        addUserWindowImageEntry = ctk.CTkEntry(addUserWindow, textvariable=self.userImageEntryVar, state="readonly")
-        addUserWindowImageEntry.grid(row=2, column=1, sticky="nsew", padx=20, pady=20)
+        self.addUserWindowImageEntry = ctk.CTkEntry(self.addUserWindow, textvariable=self.userImageEntryVar, state="readonly", corner_radius=3.5)
+        self.addUserWindowImageEntry.grid(row=2, column=1, sticky="nsew", padx=20, pady=20)
 
-        addUserImageBrowseButton = ctk.CTkButton(addUserWindow, text="Browse Image", command=self.browse_image)
+        addUserImageBrowseButton = ctk.CTkButton(self.addUserWindow, text="Browse Image", command=self.browse_image)
         addUserImageBrowseButton.grid(row=2, column=2, sticky="nsew", padx=20, pady=20)
 
-        addUserSubmitButton = ctk.CTkButton(addUserWindow, text="Submit")
+        addUserSubmitButton = ctk.CTkButton(self.addUserWindow, text="Submit", command=lambda: self.add_user_to_database(userNamePrompt.get(), self.userImageEntryVar.get()))
+        addUserSubmitButton.grid(row=3, column=0, sticky="nsew", padx=20, pady=20)
+        
+        addUserExitButton = ctk.CTkButton(self.addUserWindow, text="Cancel", command=lambda: self.addUserWindow.destroy())
+        addUserExitButton.grid(row=3, column=1, sticky="nsew", padx=20, pady=20)
 
+    def add_user_to_database(self, userName: str, profilePicture: str) -> None:
+        self.addUserWindow.destroy()
+        userNames = self.database.get_all_user_names()
+        if userName in userNames:
+            CTkMessagebox(title="Error", message=f"Error: There is user with this username in database!", icon="cancel")
+        else:
+            databaseResponse = self.database.add_user(userName, profilePicture)
+            if databaseResponse == "ok":
+                CTkMessagebox(title="Success", message="User has been added to MangaShelf", icon="check", option_1="Ok")
+                self.refresh_home_frame()
+                self.refresh_add_frame()
+                self.select_frame_by_name("home")
+            else:
+                CTkMessagebox(title="Error", message=f"Error: {databaseResponse}", icon="cancel")
+            
+            
     #Navigational button events    
     def home_nav_button_event(self) -> None:
         self.select_frame_by_name("home")
