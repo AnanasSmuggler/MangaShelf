@@ -121,7 +121,7 @@ class Gui(ctk.CTk):
             
         
     def create_listFrame(self) -> None:
-        self.listFrame = ctk.CTkFrame(self, corner_radius = 0, fg_color="transparent")
+        self.listFrame = ctk.CTkScrollableFrame(self, corner_radius = 0, fg_color="transparent")
         self.listFrame.grid_columnconfigure(0, weight=1)
 
         self.listFrameLabel = ctk.CTkLabel(self.listFrame, text="Your Shelf", compound="left", font=ctk.CTkFont(size=55, weight="bold"))
@@ -133,20 +133,23 @@ class Gui(ctk.CTk):
         else:
             self.allSeries = self.database.get_all_series()           
             for i in range(len(self.allSeries)):
+                logoPth = os.path.join(self.imagePath, f"series_logos\\{self.allSeries[i][0].lower().replace(' ', '_')}SL.png")
+                if not os.path.exists(logoPth):
+                    self.database.write_to_file(self.allSeries[i][6], logoPth)
                 buttonImage = ctk.CTkImage(light_image = Image.open(os.path.join(self.imagePath, f"series_logos\\{self.allSeries[i][0].lower().replace(' ', '_')}SL.png")), size=(100,100))
                 if self.allSeries[i][1] == self.allSeries[i][2]:
                     buttonText = f"{self.allSeries[i][0]} | {self.allSeries[i][1]}"
                 else:
                     buttonText = f"{self.allSeries[i][0]} | {self.allSeries[i][1]}, {self.allSeries[i][2]}"
                 seriesButton = ctk.CTkButton(self.listFrame, corner_radius=0, height=120, border_spacing=20, text=buttonText, fg_color="transparent",
-                                            text_color=("gray10", "gray90"), font=ctk.CTkFont(size=25, weight="bold"), hover_color=("gray70", "gray30"), image=buttonImage, anchor="w", command=self.listButton)
+                                            text_color=("gray10", "gray90"), font=ctk.CTkFont(size=25, weight="bold"), hover_color=("gray70", "gray30"), image=buttonImage, anchor="w", command=self.listButtonCommand)
                 seriesButton.grid(row=i+1, column=0, sticky="ew")
                 
 
                 #title = ctk.CTkLabel(self.listFrame, text=self.allSeries[i][0], compound="left", font=ctk.CTkFont(size=12, weight="bold"))
                 #title.grid(row=3+i, column=1, padx=20, pady=20)
         
-    def listButton(self) -> None:
+    def listButtonCommand(self) -> None:
         print("listButton")
         
     def create_addFrame(self) -> None:
@@ -173,7 +176,10 @@ class Gui(ctk.CTk):
             self.addVolumeButton.grid(row=2, column=0, sticky="w", padx=330, pady=20)
 
             self.editVolumeButton = ctk.CTkButton(self.addFrame, text="Edit Volume", command=self.edit_volume_menu)
-            self.editVolumeButton.grid(row=2, column=0, sticky="e", padx=330, pady=20)     
+            self.editVolumeButton.grid(row=2, column=0, sticky="e", padx=330, pady=20)
+            
+            self.editCollectionsButton = ctk.CTkButton(self.addFrame, text="Edit Collections", command=self.edit_collections_menu)
+            self.editCollectionsButton.grid(row=3, column=0, sticky="ns")     
             
     def create_settingsFrame(self) -> None:
         self.settingsFrame = ctk.CTkFrame(self, corner_radius = 0, fg_color="transparent")
@@ -474,6 +480,9 @@ class Gui(ctk.CTk):
                 self.editVolumeImageBrowseButton.grid(row=4, column=2, sticky="nsew", padx=20, pady=20)
                 self.editVolumeSubmitButton.grid(row=5, column=1, sticky="nsew", padx=20, pady=20)
                 self.editVolumeExitButton.grid(row=5, column=2, sticky="nsew", padx=20, pady=20)
+                vols = self.database.get_volumes_from_series(self.database.get_series_id_by_series_title(choice))
+                self.editVolumeOptionMenu.configure(values = vols)
+                self.editVolumeOptionMenu.set(vols[0])
                 self.volumeTitleEntryVar.set(self.editVolumeOptionMenu.get())
                 self.volumeImageEntryVar.set(os.path.join(self.imagePath, f"volumes_covers\\{self.editVolumeSeriesOptionMenu.get().lower().replace(' ', '_')}\\{self.editVolumeOptionMenu.get().lower().replace(' ', '_')}.png"))
         
@@ -536,6 +545,50 @@ class Gui(ctk.CTk):
                 CTkMessagebox(title="Error", message=f"Error: There is already this series in MangaShelf!", icon="cancel")
         else:
             CTkMessagebox(title="Error", message=f"Error: wrong volumes number!", icon="cancel")
+
+    def edit_collections_menu(self) -> None:
+        self.editCollectionsWindow = ctk.CTkToplevel(self)
+        self.editCollectionsWindow.title("Edit Collections")
+        self.editCollectionsWindow.geometry("900x500")
+        self.editCollectionsWindow.grab_set()
+        
+        self.editCollectionsWindowLabel = ctk.CTkLabel(self.editCollectionsWindow, text="Edit collections", font=ctk.CTkFont(size=35, weight="bold"))
+        self.editCollectionsWindowLabel.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+        
+        self.editCollectionsWindowUserOptionLabel = ctk.CTkLabel(self.editCollectionsWindow, text="Choose user: ", font=ctk.CTkFont(size=25, weight="bold"))
+        self.editCollectionsWindowUserOptionLabel.grid(row=1, column=0, sticky="nsew", padx=20, pady=20)
+        
+        self.editCollectionsWindowUserOptionMenu = ctk.CTkOptionMenu(self.editCollectionsWindow, width=150, values=self.database.get_all_user_names(), command=self.editCollectionsUser_callback)      
+        self.editCollectionsWindowUserOptionMenu.grid(row=1, column=1, sticky="w", padx=20, pady=20)
+        
+        self.editCollectionsWindowSeriesOptionLabel = ctk.CTkLabel(self.editCollectionsWindow, text="Choose series: ", font=ctk.CTkFont(size=25, weight="bold"))
+        self.editCollectionsWindowSeriesOptionLabel.grid(row=2, column=0, sticky="nsew", padx=20, pady=20)
+        
+        series = self.database.get_series_with_volumes()
+        self.editCollectionsWindowSeriesOptionMenu = ctk.CTkOptionMenu(self.editCollectionsWindow, width=150, values=series, command=self.editCollectionsSeries_callback)      
+        self.editCollectionsWindowSeriesOptionMenu.grid(row=2, column=1, sticky="w", padx=20, pady=20)
+        
+        self.volumesFrame = ctk.CTkScrollableFrame(self.editCollectionsWindow, width=450, height=150, corner_radius=3.5)
+        self.volumesFrame.grid(row=3, column=0, sticky="nsew", padx=20)
+        self.fill_volumes_frame(series[0])
+        
+        self.submitCollectionsButton = ctk.CTkButton(self.editCollectionsButton, text="Submit", command=self.submit_collections)
+        
+
+    def editCollectionsUser_callback(self, choice) -> None:
+        print("hehe")
+    
+    def fill_volumes_frame(self, seriesName: str) -> None:
+        volumes = self.database.get_series_volumes(seriesName)
+        for i in range(len(volumes)):
+            volume = ctk.CTkCheckBox(self.volumesFrame, text=volumes[i][0], font=ctk.CTkFont(size=15, weight="bold"))
+            volume.grid(row=i, column=0, padx=10, pady=10)
+    def editCollectionsSeries_callback(self, choice) -> None:
+        self.volumesFrame.destroy()
+        self.volumesFrame = ctk.CTkScrollableFrame(self.editCollectionsWindow, width=300, height=150, corner_radius=3.5)
+        self.volumesFrame.grid(row=3, column=0, sticky="nsew", padx=20)
+        self.fill_volumes_frame(choice)
+        
 
     def is_positive_integer(self, s: str) -> bool:
         try:

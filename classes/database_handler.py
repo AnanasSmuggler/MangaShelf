@@ -202,7 +202,7 @@ class Database():
             try:
                 series = self.cursor.execute('''SELECT * FROM series ORDER BY title;''')
                 records = series.fetchall()
-                return [[record[1], record[2], record[3], record[4], record[5], record[6]] for record in records]
+                return [[record[1], record[2], record[3], record[4], record[5], record[6], record[7]] for record in records]
             except sqlite3.Error as e:
                 print(e)
             
@@ -213,6 +213,24 @@ class Database():
                 users = self.cursor.execute('''SELECT title FROM series ORDER BY title ASC;''')
                 records = users.fetchall()
                 return [records[i][0] for i in range(len(records))]
+            except sqlite3.Error as e:
+                print(e)
+            return []
+        
+        def get_series_with_volumes(self) -> list[str]:
+            try:
+                series = self.cursor.execute('''SELECT title FROM series WHERE id IN (SELECT DISTINCT series_id FROM volumes) ORDER BY title ASC;''')
+                records = series.fetchall()
+                return [record[0] for record in records]
+            except sqlite3.Error as e:
+                print(e)
+            return []
+        
+        def get_series_volumes(self, seriesName: str) -> list[list]:
+            try:
+                volumes = self.cursor.execute('''SELECT title, id FROM volumes WHERE series_id = ?;''', (str(self.get_series_id_by_series_title(seriesName))))
+                records = volumes.fetchall()
+                return [[record[0], record[1]] for record in records]
             except sqlite3.Error as e:
                 print(e)
             return []
