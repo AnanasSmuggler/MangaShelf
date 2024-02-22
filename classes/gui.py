@@ -1,6 +1,7 @@
 import customtkinter as ctk
 from CTkMessagebox import CTkMessagebox
 import os
+import time
 from PIL import Image
 from classes.database_handler import Database
 
@@ -30,8 +31,10 @@ class Gui(ctk.CTk):
         self.create_navigationFrame()
         self.create_homeFrame()
         self.create_listFrame()
+        self.seriesFrame = ctk.CTkScrollableFrame(self, corner_radius = 0, fg_color="transparent")
         self.create_addFrame()
         self.create_settingsFrame()
+        
         self.select_frame_by_name("home")
         
     # Creates navigation frame with buttons linked to other frames in the app    
@@ -131,33 +134,115 @@ class Gui(ctk.CTk):
             self.listFrameNoUserLabel = ctk.CTkLabel(self.listFrame, text="No user selected", compound="left", font=ctk.CTkFont(size=25, weight="bold"))
             self.listFrameNoUserLabel.grid(row=1, column=0, padx=20, pady=20)
         else:
-            self.allSeries = self.database.get_all_series()           
+            self.allSeries = self.database.get_current_user_series()           
             for i in range(len(self.allSeries)):
-                logoPth = os.path.join(self.imagePath, f"series_logos\\{self.allSeries[i][0].lower().replace(' ', '_')}SL.png")
+                logoPth = os.path.join(self.imagePath, f"series_logos\\{self.allSeries[i][1].lower().replace(' ', '_')}SL.png")
                 if not os.path.exists(logoPth):
-                    self.database.write_to_file(self.allSeries[i][6], logoPth)
-                buttonImage = ctk.CTkImage(light_image = Image.open(os.path.join(self.imagePath, f"series_logos\\{self.allSeries[i][0].lower().replace(' ', '_')}SL.png")), size=(100,100))
-                if self.allSeries[i][1] == self.allSeries[i][2]:
-                    buttonText = f"{self.allSeries[i][0]} | {self.allSeries[i][1]}"
+                    self.database.write_to_file(self.allSeries[i][7], logoPth)
+                buttonImage = ctk.CTkImage(light_image = Image.open(os.path.join(self.imagePath, f"series_logos\\{self.allSeries[i][1].lower().replace(' ', '_')}SL.png")), size=(100,100))
+                if self.allSeries[i][2] == self.allSeries[i][3]:
+                    buttonText = f"{self.allSeries[i][1]} | {self.allSeries[i][2]}"
                 else:
-                    buttonText = f"{self.allSeries[i][0]} | {self.allSeries[i][1]}, {self.allSeries[i][2]}"
+                    buttonText = f"{self.allSeries[i][1]} | {self.allSeries[i][2]}, {self.allSeries[i][3]}"
                 seriesButton = ctk.CTkButton(self.listFrame, corner_radius=0, height=120, border_spacing=20, text=buttonText, fg_color="transparent",
-                                            text_color=("gray10", "gray90"), font=ctk.CTkFont(size=25, weight="bold"), hover_color=("gray70", "gray30"), image=buttonImage, anchor="w", command=self.listButtonCommand)
+                                            text_color=("gray10", "gray90"), font=ctk.CTkFont(size=25, weight="bold"), hover_color=("gray70", "gray30"), image=buttonImage, anchor="w", command= lambda: self.listButtonCommand(self.allSeries[i][0]))
                 seriesButton.grid(row=i+1, column=0, sticky="ew")
                 
 
                 #title = ctk.CTkLabel(self.listFrame, text=self.allSeries[i][0], compound="left", font=ctk.CTkFont(size=12, weight="bold"))
                 #title.grid(row=3+i, column=1, padx=20, pady=20)
         
-    def listButtonCommand(self) -> None:
-        print("listButton")
-        
+    def listButtonCommand(self, seriesId: int) -> None:  # Update progress every 500 milliseconds
+        self.listFrame.grid_forget()
+        self.seriesFrame.grid(row=0, column=1, sticky="nsew")
+        self.seriesFrame.grid_columnconfigure(0, weight=1)
+        seriesData = self.database.get_from_series(seriesId)
+        volumesData = self.database.get_user_volumes_of_series(seriesId)
+        self.switchVarsData = []
+
+        self.seriesGoBackButton = ctk.CTkButton(self.seriesFrame, text="Return to list", command=self.go_back_button)
+        self.seriesGoBackButton.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
+
+        if not os.path.exists(os.path.join(self.imagePath, f"series_logos\\{seriesData[0].lower().replace(' ', '_')}SL.png")):
+            self.database.write_to_file(seriesData[6], os.path.join(self.imagePath, f"series_logos\\{seriesData[0].lower().replace(' ', '_')}SL.png"))
+
+        seriesImage = ctk.CTkImage(light_image = Image.open(os.path.join(self.imagePath, f"series_logos\\{seriesData[0].lower().replace(' ', '_')}SL.png")), size=(200,200))
+        self.seriesImageLabel = ctk.CTkLabel(self.seriesFrame, image=seriesImage, text="", compound="left")
+        self.seriesImageLabel.grid(row=1, column=0, padx=20, pady=5, sticky="nsew")
+
+        self.seriesTitleLabel = ctk.CTkLabel(self.seriesFrame, text=seriesData[0], compound="left", font=ctk.CTkFont(size=30, weight="bold"))
+        self.seriesTitleLabel.grid(row=1, column=1, padx=20, pady=20, sticky="nsew")
+
+        self.artSeriesLabel = ctk.CTkLabel(self.seriesFrame, text=f"Art: {seriesData[1]}", compound="left", font=ctk.CTkFont(size=25, weight="bold"))
+        self.artSeriesLabel.grid(row=2, column=0, padx=20, pady=20, sticky="nsew")
+
+        self.storySeriesLabel = ctk.CTkLabel(self.seriesFrame, text=f"Story: {seriesData[2]}", compound="left", font=ctk.CTkFont(size=25, weight="bold"))
+        self.storySeriesLabel.grid(row=3, column=0, padx=20, pady=20, sticky="nsew")
+
+        self.publisherSeriesLabel = ctk.CTkLabel(self.seriesFrame, text=f"Publisher: {seriesData[3]}", compound="left", font=ctk.CTkFont(size=25, weight="bold"))
+        self.publisherSeriesLabel.grid(row=4, column=0, padx=20, pady=20, sticky="nsew")
+
+        self.progressSeriesLabel = ctk.CTkLabel(self.seriesFrame, text=f"{len(volumesData)}/{seriesData[4]} volumes collected", compound="left", font=ctk.CTkFont(size=25, weight="bold"))
+        self.progressSeriesLabel.grid(row=2, column=1, padx=20, pady=20, sticky="nsew")
+
+        self.progressBar = ctk.CTkProgressBar(self.seriesFrame, orientation="horizontal", mode="determinate")
+        self.progressBar.grid(row=3, column=1, padx=20, pady=20, sticky="nsew")
+
+        progressPercentage = round((len(volumesData) / seriesData[4]), 2)
+        self.progressBar.set(progressPercentage)
+
+        self.volumeSeriesFrame = ctk.CTkFrame(self.seriesFrame, corner_radius = 0, fg_color="transparent")
+        self.volumeSeriesFrame.grid(row=5, column=0, columnspan=2, sticky="nsew")
+
+        for i in range(len(volumesData)):
+
+            if not os.path.exists(os.path.join(self.imagePath, f"volumes_covers\\{seriesData[0].lower().replace(' ', '_')}\\{volumesData[i][1].lower().replace(' ', '_')}.png")):
+                self.database.write_to_file(volumesData[2], os.path.join(self.imagePath, f"volumes_covers\\{seriesData[0].lower().replace(' ', '_')}\\{volumesData[i][1].lower().replace(' ', '_')}.png"))
+
+            volumeImage = ctk.CTkImage(light_image = Image.open(os.path.join(self.imagePath, f"volumes_covers\\{seriesData[0].lower().replace(' ', '_')}\\{volumesData[i][1].lower().replace(' ', '_')}.png")), size=(250,300))
+            volumeImageLabel = ctk.CTkLabel(self.volumeSeriesFrame, text="", image=volumeImage)
+            volumeImageLabel.grid(row=i, column=0, sticky="nsew", padx=20, pady=20)
+
+            volumeTitleLabel = ctk.CTkLabel(self.volumeSeriesFrame, text=volumesData[i][1], compound="left", font=ctk.CTkFont(size=20, weight="bold"))
+            volumeTitleLabel.grid(row=i, column=1, sticky="nsew", padx=20, pady=20)
+
+            volumeReadSwitchVar = ctk.IntVar()
+            volumeBorrowSwitchVar = ctk.IntVar()
+
+            if volumesData[i][3] == 1:
+                volumeReadSwitchVar.set(1)
+            else:
+                volumeReadSwitchVar.set(0)
+
+            if volumesData[i][4] == 1:
+                volumeBorrowSwitchVar.set(1)
+            else:
+                volumeBorrowSwitchVar.set(0)
+            
+            self.switchVarsData.append([volumeReadSwitchVar.get(), volumeBorrowSwitchVar.get()])
+            volumeReadSwitch = ctk.CTkSwitch(self.volumeSeriesFrame, text="Read", font=ctk.CTkFont(size=20, weight="bold"), variable=volumeReadSwitchVar, onvalue=1, offvalue=0, command=lambda: self.update_read(volumesData[i][0], seriesId, self.switchVarsData[i][0], i))
+            volumeReadSwitch.grid(row=i, column=2, sticky="nsew", padx=20, pady=20)
+
+            volumeBorrowedSwitch = ctk.CTkSwitch(self.volumeSeriesFrame, text="Borrowed", font=ctk.CTkFont(size=20, weight="bold"))
+            volumeBorrowedSwitch.grid(row=i, column=3, sticky="nsew", padx=20, pady=20)
+
+    def update_read(self, volumeId: int, seriesId: int, value: int, i: int) -> None:
+        #dbResponse = self.database.update_read(volumeId, seriesId, )
+        print(f"test {value}")
+        if value == 1:
+            self.switchVarsData[i][0] = 0
+        else:
+            self.switchVarsData[i][0] = 1
+    
+    def go_back_button(self) -> None:
+        self.seriesFrame.grid_forget()
+        self.select_frame_by_name("list")
+
     def create_addFrame(self) -> None:
         self.addFrame = ctk.CTkFrame(self, corner_radius = 0, fg_color="transparent")
-        self.addFrame.grid_columnconfigure(0, weight=1) 
 
         self.addFrameLabel = ctk.CTkLabel(self.addFrame, text="Add/Edit", compound="left", font=ctk.CTkFont(size=55, weight="bold"))
-        self.addFrameLabel.grid(row=0, column=0, padx=20, pady=20)
+        self.addFrameLabel.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
 
         if self.database.no_users():
             self.addFrameNoUserLabel = ctk.CTkLabel(self.addFrame, text="Let's add first user to MangaShelf: ", compound="left", font=ctk.CTkFont(size=25, weight="bold"))
@@ -165,22 +250,24 @@ class Gui(ctk.CTk):
 
             self.addUserButton = ctk.CTkButton(self.addFrame, text="Add User", command=self.add_user_menu)
             self.addUserButton.grid(row=2, column=0, padx=20, pady=20)
-        else:  
+        else:
+  
             self.addSeriesButton = ctk.CTkButton(self.addFrame, text="Add Series", command=self.add_series_menu)
-            self.addSeriesButton.grid(row=1, column=0, sticky="w", padx=330, pady=20)
-
+            self.addSeriesButton.grid(row=1, column=0, sticky="nsew", padx=20, pady=20)
+            
             self.editSeriesButton = ctk.CTkButton(self.addFrame, text="Edit Series", command=self.edit_series_menu)
-            self.editSeriesButton.grid(row=1, column=0, sticky="e", padx=330, pady=20)     
+            self.editSeriesButton.grid(row=2, column=0, sticky="nsew", padx=20, pady=20)     
             
             self.addVolumeButton = ctk.CTkButton(self.addFrame, text="Add Volume", command=self.add_volume_menu)
-            self.addVolumeButton.grid(row=2, column=0, sticky="w", padx=330, pady=20)
+            self.addVolumeButton.grid(row=3, column=0, sticky="nsew", padx=20, pady=20)
 
             self.editVolumeButton = ctk.CTkButton(self.addFrame, text="Edit Volume", command=self.edit_volume_menu)
-            self.editVolumeButton.grid(row=2, column=0, sticky="e", padx=330, pady=20)
+            self.editVolumeButton.grid(row=4, column=0, sticky="nsew", padx=20, pady=20)
             
             self.editCollectionsButton = ctk.CTkButton(self.addFrame, text="Edit Collections", command=self.edit_collections_menu)
-            self.editCollectionsButton.grid(row=3, column=0, sticky="ns")     
+            self.editCollectionsButton.grid(row=5, column=0, sticky="nsew", padx=20, pady=20)     
             
+
     def create_settingsFrame(self) -> None:
         self.settingsFrame = ctk.CTkFrame(self, corner_radius = 0, fg_color="transparent")
         self.settingsFrame.grid_columnconfigure(0, weight=1) 
@@ -208,6 +295,7 @@ class Gui(ctk.CTk):
     def homeMenu_callback(self, choice) -> None:
         self.database.currentUserId = self.database.get_user_id_by_user_name(choice)
         self.refresh_home_frame()
+        self.refresh_list_frame()
         self.homeOptionMenu.set(choice)
         
 
@@ -289,83 +377,88 @@ class Gui(ctk.CTk):
         self.editSeriesWindowLabel = ctk.CTkLabel(self.editSeriesWindow, text="Edit Series", font=ctk.CTkFont(size=35, weight="bold"))
         self.editSeriesWindowLabel.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
 
-        self.editSeriesWindowOptionLabel = ctk.CTkLabel(self.editSeriesWindow, text="Choose Series: ", font=ctk.CTkFont(size=35, weight="bold"))
-        self.editSeriesWindowOptionLabel.grid(row=1, column=0, sticky="nsew", padx=20, pady=20)
-        
-        self.editSeriesOptionMenu = ctk.CTkOptionMenu(self.editSeriesWindow, values=self.database.get_all_series_names(), command=self.editSeriesMenu_callback)
-        self.editSeriesOptionMenu.grid(row=1, column=1, sticky="nsew", padx=20, pady=20)
+        if self.database.get_all_series_names() == []:
+            self.editSeriesWindowLabel = ctk.CTkLabel(self.editSeriesWindow, text="There are no series in MangaShelf to edit", font=ctk.CTkFont(size=35, weight="bold"))
+            self.editSeriesWindowLabel.grid(row=1, column=0, sticky="nsew", padx=20, pady=20)    
 
-        self.chosenSeries = self.database.get_from_series(self.database.get_series_id_by_series_title(self.editSeriesOptionMenu.get()))
-
-        self.editSeriesTitleLabel = ctk.CTkLabel(self.editSeriesWindow, text="Title: ", font=ctk.CTkFont(size=25))
-        self.editSeriesTitleLabel.grid(row=2, column=0, padx=20, pady=20)
-
-        self.editSeriesTitleEntryVar = ctk.StringVar()
-        self.editSeriesTitleEntryVar.set(f"{self.chosenSeries[0]}")        
-        self.editSeriesTitlePrompt = ctk.CTkEntry(self.editSeriesWindow, textvariable=self.editSeriesTitleEntryVar, corner_radius=3.5)
-        self.editSeriesTitlePrompt.grid(row=2, column=1, sticky="nsew", padx=20, pady=20)
-        
-        self.editSeriesArtLabel = ctk.CTkLabel(self.editSeriesWindow, text="Art: ", font=ctk.CTkFont(size=25))
-        self.editSeriesArtLabel.grid(row=3, column=0, padx=20, pady=20)
-        
-        self.editSeriesArtEntryVar = ctk.StringVar()
-        self.editSeriesArtEntryVar.set(f"{self.chosenSeries[1]}")
-        self.editSeriesArtPrompt = ctk.CTkEntry(self.editSeriesWindow, textvariable=self.editSeriesArtEntryVar, corner_radius=3.5)
-        self.editSeriesArtPrompt.grid(row=3, column=1, sticky="nsew", padx=20, pady=20)
-        
-        self.editSeriesStoryLabel = ctk.CTkLabel(self.editSeriesWindow, text="Story: ", font=ctk.CTkFont(size=25))
-        self.editSeriesStoryLabel.grid(row=4, column=0, padx=20, pady=20)
-        
-        self.editSeriesStoryEntryVar = ctk.StringVar()
-        self.editSeriesStoryEntryVar.set(f"{self.chosenSeries[2]}")
-        self.editSeriesStoryPrompt = ctk.CTkEntry(self.editSeriesWindow, textvariable=self.editSeriesStoryEntryVar, corner_radius=3.5)
-        self.editSeriesStoryPrompt.grid(row=4, column=1, sticky="nsew", padx=20, pady=20)
-        
-        self.editSeriesPublisherLabel = ctk.CTkLabel(self.editSeriesWindow, text="Publisher: ", font=ctk.CTkFont(size=25))
-        self.editSeriesPublisherLabel.grid(row=5, column=0, padx=20, pady=20)
-        
-        self.editSeriesPublisherEntryVar = ctk.StringVar()
-        self.editSeriesPublisherEntryVar.set(f"{self.chosenSeries[3]}")
-        self.editSeriesPublisherPrompt = ctk.CTkEntry(self.editSeriesWindow, textvariable=self.editSeriesPublisherEntryVar, corner_radius=3.5)
-        self.editSeriesPublisherPrompt.grid(row=5, column=1, sticky="nsew", padx=20, pady=20)
-        
-        self.editSeriesVolumesPublishedLabel = ctk.CTkLabel(self.editSeriesWindow, text="Volumes published: ", font=ctk.CTkFont(size=25))
-        self.editSeriesVolumesPublishedLabel.grid(row=6, column=0, padx=20, pady=20)
-        
-        self.editSeriesVolumesPublishedEntryVar = ctk.StringVar()
-        self.editSeriesVolumesPublishedEntryVar.set(f"{self.chosenSeries[4]}")
-        self.editSeriesVolumesPublishedPrompt = ctk.CTkEntry(self.editSeriesWindow, textvariable=self.editSeriesVolumesPublishedEntryVar, corner_radius=3.5)
-        self.editSeriesVolumesPublishedPrompt.grid(row=6, column=1, sticky="nsew", padx=20, pady=20)
-        
-        self.editSeriesOnGoingLabel = ctk.CTkLabel(self.editSeriesWindow, text="On Going", font=ctk.CTkFont(size=25))
-        self.editSeriesOnGoingLabel.grid(row=7, column=0, padx=20, pady=20)
-        
-        self.editSeriesSwitchVar = ctk.StringVar()
-        self.editSeriesSwitch = ctk.CTkSwitch(self.editSeriesWindow, text="", variable=self.editSeriesSwitchVar, onvalue="1", offvalue="0")
-        self.editSeriesSwitch.grid(row=7, column=1, sticky="nsew", padx=20, pady=20)
-        
-        if self.chosenSeries[5] == 1:
-            self.editSeriesSwitch.toggle()
+        else:
+            self.editSeriesWindowOptionLabel = ctk.CTkLabel(self.editSeriesWindow, text="Choose Series: ", font=ctk.CTkFont(size=35, weight="bold"))
+            self.editSeriesWindowOptionLabel.grid(row=1, column=0, sticky="nsew", padx=20, pady=20)
             
-        self.editSeriesFinishedLabel = ctk.CTkLabel(self.editSeriesWindow, text="Finished", font=ctk.CTkFont(size=25))
-        self.editSeriesFinishedLabel.grid(row=7, column=2, padx=20, pady=20)
-        
-        self.editSeriesLogoLabel = ctk.CTkLabel(self.editSeriesWindow, text="Logo: ", font=ctk.CTkFont(size=25))
-        self.editSeriesLogoLabel.grid(row=8, column=0, padx=20, pady=20)
-        
-        self.seriesImageEntryVar = ctk.StringVar()
-        self.seriesImageEntryVar.set(f"{self.imagePath}\\series_logos\\{self.chosenSeries[0].lower().replace(' ', '_')}SL.png")
-        self.editSeriesWindowImageEntry = ctk.CTkEntry(self.editSeriesWindow, textvariable=self.seriesImageEntryVar, state="readonly", corner_radius=3.5)
-        self.editSeriesWindowImageEntry.grid(row=8, column=1, sticky="nsew", padx=20, pady=20)
-        
-        self.editSeriesImageBrowseButton = ctk.CTkButton(self.editSeriesWindow, text="Browse Image", command=lambda: self.browse_square_image(self.seriesImageEntryVar))
-        self.editSeriesImageBrowseButton.grid(row=8, column=2, sticky="nsew", padx=20, pady=20)
-        
-        self.editSeriesSubmitButton = ctk.CTkButton(self.editSeriesWindow, text="Submit", command=lambda: self.submit_update_series(self.editSeriesTitlePrompt.get(), self.editSeriesArtPrompt.get(), self.editSeriesStoryPrompt.get(), self.editSeriesPublisherPrompt.get(), self.editSeriesVolumesPublishedPrompt.get(), self.editSeriesSwitch.get(), self.seriesImageEntryVar.get()))
-        self.editSeriesSubmitButton.grid(row=9, column=1, sticky="nsew", padx=20, pady=20)
-        
-        self.editSeriesExitButton = ctk.CTkButton(self.editSeriesWindow, text="Cancel", command=lambda: self.editSeriesWindow.destroy())
-        self.editSeriesExitButton.grid(row=9, column=2, sticky="nsew", padx=20, pady=20)
+            self.editSeriesOptionMenu = ctk.CTkOptionMenu(self.editSeriesWindow, values=self.database.get_all_series_names(), command=self.editSeriesMenu_callback)
+            self.editSeriesOptionMenu.grid(row=1, column=1, sticky="nsew", padx=20, pady=20)
+
+            self.chosenSeries = self.database.get_from_series(self.database.get_series_id_by_series_title(self.editSeriesOptionMenu.get()))
+
+            self.editSeriesTitleLabel = ctk.CTkLabel(self.editSeriesWindow, text="Title: ", font=ctk.CTkFont(size=25))
+            self.editSeriesTitleLabel.grid(row=2, column=0, padx=20, pady=20)
+
+            self.editSeriesTitleEntryVar = ctk.StringVar()
+            self.editSeriesTitleEntryVar.set(f"{self.chosenSeries[0]}")        
+            self.editSeriesTitlePrompt = ctk.CTkEntry(self.editSeriesWindow, textvariable=self.editSeriesTitleEntryVar, corner_radius=3.5)
+            self.editSeriesTitlePrompt.grid(row=2, column=1, sticky="nsew", padx=20, pady=20)
+            
+            self.editSeriesArtLabel = ctk.CTkLabel(self.editSeriesWindow, text="Art: ", font=ctk.CTkFont(size=25))
+            self.editSeriesArtLabel.grid(row=3, column=0, padx=20, pady=20)
+            
+            self.editSeriesArtEntryVar = ctk.StringVar()
+            self.editSeriesArtEntryVar.set(f"{self.chosenSeries[1]}")
+            self.editSeriesArtPrompt = ctk.CTkEntry(self.editSeriesWindow, textvariable=self.editSeriesArtEntryVar, corner_radius=3.5)
+            self.editSeriesArtPrompt.grid(row=3, column=1, sticky="nsew", padx=20, pady=20)
+            
+            self.editSeriesStoryLabel = ctk.CTkLabel(self.editSeriesWindow, text="Story: ", font=ctk.CTkFont(size=25))
+            self.editSeriesStoryLabel.grid(row=4, column=0, padx=20, pady=20)
+            
+            self.editSeriesStoryEntryVar = ctk.StringVar()
+            self.editSeriesStoryEntryVar.set(f"{self.chosenSeries[2]}")
+            self.editSeriesStoryPrompt = ctk.CTkEntry(self.editSeriesWindow, textvariable=self.editSeriesStoryEntryVar, corner_radius=3.5)
+            self.editSeriesStoryPrompt.grid(row=4, column=1, sticky="nsew", padx=20, pady=20)
+            
+            self.editSeriesPublisherLabel = ctk.CTkLabel(self.editSeriesWindow, text="Publisher: ", font=ctk.CTkFont(size=25))
+            self.editSeriesPublisherLabel.grid(row=5, column=0, padx=20, pady=20)
+            
+            self.editSeriesPublisherEntryVar = ctk.StringVar()
+            self.editSeriesPublisherEntryVar.set(f"{self.chosenSeries[3]}")
+            self.editSeriesPublisherPrompt = ctk.CTkEntry(self.editSeriesWindow, textvariable=self.editSeriesPublisherEntryVar, corner_radius=3.5)
+            self.editSeriesPublisherPrompt.grid(row=5, column=1, sticky="nsew", padx=20, pady=20)
+            
+            self.editSeriesVolumesPublishedLabel = ctk.CTkLabel(self.editSeriesWindow, text="Volumes published: ", font=ctk.CTkFont(size=25))
+            self.editSeriesVolumesPublishedLabel.grid(row=6, column=0, padx=20, pady=20)
+            
+            self.editSeriesVolumesPublishedEntryVar = ctk.StringVar()
+            self.editSeriesVolumesPublishedEntryVar.set(f"{self.chosenSeries[4]}")
+            self.editSeriesVolumesPublishedPrompt = ctk.CTkEntry(self.editSeriesWindow, textvariable=self.editSeriesVolumesPublishedEntryVar, corner_radius=3.5)
+            self.editSeriesVolumesPublishedPrompt.grid(row=6, column=1, sticky="nsew", padx=20, pady=20)
+            
+            self.editSeriesOnGoingLabel = ctk.CTkLabel(self.editSeriesWindow, text="On Going", font=ctk.CTkFont(size=25))
+            self.editSeriesOnGoingLabel.grid(row=7, column=0, padx=20, pady=20)
+            
+            self.editSeriesSwitchVar = ctk.StringVar()
+            self.editSeriesSwitch = ctk.CTkSwitch(self.editSeriesWindow, text="", variable=self.editSeriesSwitchVar, onvalue="1", offvalue="0")
+            self.editSeriesSwitch.grid(row=7, column=1, sticky="nsew", padx=20, pady=20)
+            
+            if self.chosenSeries[5] == 1:
+                self.editSeriesSwitch.toggle()
+                
+            self.editSeriesFinishedLabel = ctk.CTkLabel(self.editSeriesWindow, text="Finished", font=ctk.CTkFont(size=25))
+            self.editSeriesFinishedLabel.grid(row=7, column=2, padx=20, pady=20)
+            
+            self.editSeriesLogoLabel = ctk.CTkLabel(self.editSeriesWindow, text="Logo: ", font=ctk.CTkFont(size=25))
+            self.editSeriesLogoLabel.grid(row=8, column=0, padx=20, pady=20)
+            
+            self.seriesImageEntryVar = ctk.StringVar()
+            self.seriesImageEntryVar.set(f"{self.imagePath}\\series_logos\\{self.chosenSeries[0].lower().replace(' ', '_')}SL.png")
+            self.editSeriesWindowImageEntry = ctk.CTkEntry(self.editSeriesWindow, textvariable=self.seriesImageEntryVar, state="readonly", corner_radius=3.5)
+            self.editSeriesWindowImageEntry.grid(row=8, column=1, sticky="nsew", padx=20, pady=20)
+            
+            self.editSeriesImageBrowseButton = ctk.CTkButton(self.editSeriesWindow, text="Browse Image", command=lambda: self.browse_square_image(self.seriesImageEntryVar))
+            self.editSeriesImageBrowseButton.grid(row=8, column=2, sticky="nsew", padx=20, pady=20)
+            
+            self.editSeriesSubmitButton = ctk.CTkButton(self.editSeriesWindow, text="Submit", command=lambda: self.submit_update_series(self.editSeriesTitlePrompt.get(), self.editSeriesArtPrompt.get(), self.editSeriesStoryPrompt.get(), self.editSeriesPublisherPrompt.get(), self.editSeriesVolumesPublishedPrompt.get(), self.editSeriesSwitch.get(), self.seriesImageEntryVar.get()))
+            self.editSeriesSubmitButton.grid(row=9, column=1, sticky="nsew", padx=20, pady=20)
+            
+            self.editSeriesExitButton = ctk.CTkButton(self.editSeriesWindow, text="Cancel", command=lambda: self.editSeriesWindow.destroy())
+            self.editSeriesExitButton.grid(row=9, column=2, sticky="nsew", padx=20, pady=20)
 
     def add_volume_menu(self) -> None:
         self.addVolumeWindow = ctk.CTkToplevel(self)
@@ -376,34 +469,40 @@ class Gui(ctk.CTk):
         self.addVolumeWindowLabel = ctk.CTkLabel(self.addVolumeWindow, text="Add Volume", font=ctk.CTkFont(size=35, weight="bold"))
         self.addVolumeWindowLabel.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
 
-        self.addVolumeWindowOptionLabel = ctk.CTkLabel(self.addVolumeWindow, text="Choose Series: ", font=ctk.CTkFont(size=25, weight="bold"))
-        self.addVolumeWindowOptionLabel.grid(row=1, column=0, sticky="nsew", padx=20, pady=20)
+        if self.database.get_all_series_names() == []:
+
+            self.addVolumeWindowLabel = ctk.CTkLabel(self.addVolumeWindow, text="There are no series in MangaShelf", font=ctk.CTkFont(size=25, weight="bold"))
+            self.addVolumeWindowLabel.grid(row=1, column=0, sticky="nsew", padx=20, pady=20)
+
+        else:
+            self.addVolumeWindowOptionLabel = ctk.CTkLabel(self.addVolumeWindow, text="Choose Series: ", font=ctk.CTkFont(size=25, weight="bold"))
+            self.addVolumeWindowOptionLabel.grid(row=1, column=0, sticky="nsew", padx=20, pady=20)
+            
+            self.addVolumeOptionMenu = ctk.CTkOptionMenu(self.addVolumeWindow, values=self.database.get_all_series_names())
+            self.addVolumeOptionMenu.grid(row=1, column=1, sticky="nsew", padx=20, pady=20)
+            
+            self.addVolumeTitleLabel = ctk.CTkLabel(self.addVolumeWindow, text="Title: ", font=ctk.CTkFont(size=25))
+            self.addVolumeTitleLabel.grid(row=2, column=0, padx=20, pady=20)
+            
+            self.addVolumeTitlePrompt = ctk.CTkEntry(self.addVolumeWindow, corner_radius=3.5)
+            self.addVolumeTitlePrompt.grid(row=2, column=1, sticky="nsew", padx=20, pady=20)
+            
+            self.addVolumeCoverLabel = ctk.CTkLabel(self.addVolumeWindow, text="Cover: ", font=ctk.CTkFont(size=25))
+            self.addVolumeCoverLabel.grid(row=3, column=0, padx=20, pady=20)
+            
+            self.volumeImageEntryVar = ctk.StringVar()
+            self.addVolumeWindowImageEntry = ctk.CTkEntry(self.addVolumeWindow, textvariable=self.volumeImageEntryVar, state="readonly", corner_radius=3.5)
+            self.addVolumeWindowImageEntry.grid(row=3, column=1, sticky="nsew", padx=20, pady=20)
+            
+            self.addVolumeImageBrowseButton = ctk.CTkButton(self.addVolumeWindow, text="Browse Image", command=lambda: self.browse_cover_image(self.volumeImageEntryVar))
+            self.addVolumeImageBrowseButton.grid(row=3, column=2, sticky="nsew", padx=20, pady=20)
+            
+            self.addVolumeSubmitButton = ctk.CTkButton(self.addVolumeWindow, text="Submit", command=lambda: self.submit_volume(self.addVolumeOptionMenu.get(), self.addVolumeTitlePrompt.get(), self.volumeImageEntryVar.get()))
+            self.addVolumeSubmitButton.grid(row=4, column=1, sticky="nsew", padx=20, pady=20)
+            
+            self.addVolumeExitButton = ctk.CTkButton(self.addVolumeWindow, text="Cancel", command=lambda: self.addVolumeWindow.destroy())
+            self.addVolumeExitButton.grid(row=4, column=2, sticky="nsew", padx=20, pady=20)
         
-        self.addVolumeOptionMenu = ctk.CTkOptionMenu(self.addVolumeWindow, values=self.database.get_all_series_names())
-        self.addVolumeOptionMenu.grid(row=1, column=1, sticky="nsew", padx=20, pady=20)
-        
-        self.addVolumeTitleLabel = ctk.CTkLabel(self.addVolumeWindow, text="Title: ", font=ctk.CTkFont(size=25))
-        self.addVolumeTitleLabel.grid(row=2, column=0, padx=20, pady=20)
-        
-        self.addVolumeTitlePrompt = ctk.CTkEntry(self.addVolumeWindow, corner_radius=3.5)
-        self.addVolumeTitlePrompt.grid(row=2, column=1, sticky="nsew", padx=20, pady=20)
-        
-        self.addVolumeCoverLabel = ctk.CTkLabel(self.addVolumeWindow, text="Cover: ", font=ctk.CTkFont(size=25))
-        self.addVolumeCoverLabel.grid(row=3, column=0, padx=20, pady=20)
-        
-        self.volumeImageEntryVar = ctk.StringVar()
-        self.addVolumeWindowImageEntry = ctk.CTkEntry(self.addVolumeWindow, textvariable=self.volumeImageEntryVar, state="readonly", corner_radius=3.5)
-        self.addVolumeWindowImageEntry.grid(row=3, column=1, sticky="nsew", padx=20, pady=20)
-        
-        self.addVolumeImageBrowseButton = ctk.CTkButton(self.addVolumeWindow, text="Browse Image", command=lambda: self.browse_cover_image(self.volumeImageEntryVar))
-        self.addVolumeImageBrowseButton.grid(row=3, column=2, sticky="nsew", padx=20, pady=20)
-        
-        self.addVolumeSubmitButton = ctk.CTkButton(self.addVolumeWindow, text="Submit", command=lambda: self.submit_volume(self.addVolumeOptionMenu.get(), self.addVolumeTitlePrompt.get(), self.volumeImageEntryVar.get()))
-        self.addVolumeSubmitButton.grid(row=4, column=1, sticky="nsew", padx=20, pady=20)
-        
-        self.addVolumeExitButton = ctk.CTkButton(self.addVolumeWindow, text="Cancel", command=lambda: self.addVolumeWindow.destroy())
-        self.addVolumeExitButton.grid(row=4, column=2, sticky="nsew", padx=20, pady=20)
-    
     def edit_volume_menu(self) -> None:
         self.editVolumeWindow = ctk.CTkToplevel(self)
         self.editVolumeWindow.title("Edit Volume")
@@ -413,35 +512,41 @@ class Gui(ctk.CTk):
         self.editVolumeWindowLabel = ctk.CTkLabel(self.editVolumeWindow, text="Edit Volume", font=ctk.CTkFont(size=35, weight="bold"))
         self.editVolumeWindowLabel.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
         
-        self.editVolumeWindowSeriesOptionLabel = ctk.CTkLabel(self.editVolumeWindow, text="Choose Series: ", font=ctk.CTkFont(size=25, weight="bold"))
-        self.editVolumeWindowSeriesOptionLabel.grid(row=1, column=0, sticky="nsew", padx=20, pady=20)
+        if self.database.get_series_with_volumes() == []:
+            self.editVolumeWindowSeriesOptionLabel = ctk.CTkLabel(self.editVolumeWindow, text="There are no volumes added to MangaShelf", font=ctk.CTkFont(size=25, weight="bold"))
+            self.editVolumeWindowSeriesOptionLabel.grid(row=1, column=0, sticky="nsew", padx=20, pady=20)    
+
+        else:
+
+            self.editVolumeWindowSeriesOptionLabel = ctk.CTkLabel(self.editVolumeWindow, text="Choose Series: ", font=ctk.CTkFont(size=25, weight="bold"))
+            self.editVolumeWindowSeriesOptionLabel.grid(row=1, column=0, sticky="nsew", padx=20, pady=20)
+                
+            self.editVolumeSeriesOptionMenu = ctk.CTkOptionMenu(self.editVolumeWindow, values=self.database.get_all_series_names(), command=self.editVolumeWindow_seriesOptionMenu_callback)
+            self.editVolumeSeriesOptionMenu.grid(row=1, column=1, sticky="nsew", padx=20, pady=20)
             
-        self.editVolumeSeriesOptionMenu = ctk.CTkOptionMenu(self.editVolumeWindow, values=self.database.get_all_series_names(), command=self.editVolumeWindow_seriesOptionMenu_callback)
-        self.editVolumeSeriesOptionMenu.grid(row=1, column=1, sticky="nsew", padx=20, pady=20)
-        
-        self.editVolumeWindowSeriesOptionLabel = ctk.CTkLabel(self.editVolumeWindow, text="There are no volumes added to this series", font=ctk.CTkFont(size=25, weight="bold"))
-        
-        self.editVolumeWindowVolumeOptionLabel = ctk.CTkLabel(self.editVolumeWindow, text="Choose Volume: ", font=ctk.CTkFont(size=25, weight="bold"))
+            self.editVolumeWindowSeriesOptionLabel = ctk.CTkLabel(self.editVolumeWindow, text="There are no volumes added to this series", font=ctk.CTkFont(size=25, weight="bold"))
+            
+            self.editVolumeWindowVolumeOptionLabel = ctk.CTkLabel(self.editVolumeWindow, text="Choose Volume: ", font=ctk.CTkFont(size=25, weight="bold"))
 
-        self.editVolumeOptionMenu = ctk.CTkOptionMenu(self.editVolumeWindow, values=self.database.get_volumes_from_series(self.database.get_series_id_by_series_title(self.editVolumeSeriesOptionMenu.get())), command=self.editVolumeOptionMenu_callback)
+            self.editVolumeOptionMenu = ctk.CTkOptionMenu(self.editVolumeWindow, values=self.database.get_volumes_from_series(self.database.get_series_id_by_series_title(self.editVolumeSeriesOptionMenu.get())), command=self.editVolumeOptionMenu_callback)
 
-        self.editVolumeTitleLabel = ctk.CTkLabel(self.editVolumeWindow, text="Title: ", font=ctk.CTkFont(size=25))
+            self.editVolumeTitleLabel = ctk.CTkLabel(self.editVolumeWindow, text="Title: ", font=ctk.CTkFont(size=25))
 
-        self.volumeTitleEntryVar = ctk.StringVar()
-        self.editVolumeTitlePrompt = ctk.CTkEntry(self.editVolumeWindow, textvariable=self.volumeTitleEntryVar, corner_radius=3.5)
+            self.volumeTitleEntryVar = ctk.StringVar()
+            self.editVolumeTitlePrompt = ctk.CTkEntry(self.editVolumeWindow, textvariable=self.volumeTitleEntryVar, corner_radius=3.5)
 
-        self.editVolumeCoverLabel = ctk.CTkLabel(self.editVolumeWindow, text="Cover: ", font=ctk.CTkFont(size=25))
+            self.editVolumeCoverLabel = ctk.CTkLabel(self.editVolumeWindow, text="Cover: ", font=ctk.CTkFont(size=25))
 
-        self.volumeImageEntryVar = ctk.StringVar()
-        self.editVolumeWindowImageEntry = ctk.CTkEntry(self.editVolumeWindow, textvariable=self.volumeImageEntryVar, state="readonly", corner_radius=3.5)
+            self.volumeImageEntryVar = ctk.StringVar()
+            self.editVolumeWindowImageEntry = ctk.CTkEntry(self.editVolumeWindow, textvariable=self.volumeImageEntryVar, state="readonly", corner_radius=3.5)
 
-        self.editVolumeImageBrowseButton = ctk.CTkButton(self.editVolumeWindow, text="Browse Image", command=lambda: self.browse_cover_image(self.volumeImageEntryVar))
+            self.editVolumeImageBrowseButton = ctk.CTkButton(self.editVolumeWindow, text="Browse Image", command=lambda: self.browse_cover_image(self.volumeImageEntryVar))
 
-        self.editVolumeSubmitButton = ctk.CTkButton(self.editVolumeWindow, text="Submit", command=lambda: self.submit_update_volume(self.editVolumeSeriesOptionMenu.get(), self.editVolumeTitlePrompt.get(), self.editVolumeOptionMenu.get(), self.volumeImageEntryVar.get()))
+            self.editVolumeSubmitButton = ctk.CTkButton(self.editVolumeWindow, text="Submit", command=lambda: self.submit_update_volume(self.editVolumeSeriesOptionMenu.get(), self.editVolumeTitlePrompt.get(), self.editVolumeOptionMenu.get(), self.volumeImageEntryVar.get()))
 
-        self.editVolumeExitButton = ctk.CTkButton(self.editVolumeWindow, text="Cancel", command=lambda: self.editVolumeWindow.destroy())
+            self.editVolumeExitButton = ctk.CTkButton(self.editVolumeWindow, text="Cancel", command=lambda: self.editVolumeWindow.destroy())
 
-        self.editVolumeWindow_seriesOptionMenu_callback(self.editVolumeSeriesOptionMenu.get())
+            self.editVolumeWindow_seriesOptionMenu_callback(self.editVolumeSeriesOptionMenu.get())
 
     def submit_update_volume(self, seriesName: str, newTitle: str, oldTitle: str, cover: str) -> None:
         self.editVolumeWindow.destroy()
@@ -539,6 +644,7 @@ class Gui(ctk.CTk):
                 databaseResponse = self.database.add_series(title, art, story, publisher, int(volumes), int(finished), logo)
                 if databaseResponse == "ok":
                     CTkMessagebox(title="Success", message="Series added to MangaShelf!", icon="check", option_1="Ok")
+                    self.refresh_list_frame()
                 else:
                     CTkMessagebox(title="Error", message=f"Error: {databaseResponse}", icon="cancel")
             else:
@@ -552,42 +658,94 @@ class Gui(ctk.CTk):
         self.editCollectionsWindow.geometry("900x500")
         self.editCollectionsWindow.grab_set()
         
-        self.editCollectionsWindowLabel = ctk.CTkLabel(self.editCollectionsWindow, text="Edit collections", font=ctk.CTkFont(size=35, weight="bold"))
-        self.editCollectionsWindowLabel.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
-        
-        self.editCollectionsWindowUserOptionLabel = ctk.CTkLabel(self.editCollectionsWindow, text="Choose user: ", font=ctk.CTkFont(size=25, weight="bold"))
-        self.editCollectionsWindowUserOptionLabel.grid(row=1, column=0, sticky="nsew", padx=20, pady=20)
-        
-        self.editCollectionsWindowUserOptionMenu = ctk.CTkOptionMenu(self.editCollectionsWindow, width=150, values=self.database.get_all_user_names(), command=self.editCollectionsUser_callback)      
-        self.editCollectionsWindowUserOptionMenu.grid(row=1, column=1, sticky="w", padx=20, pady=20)
-        
-        self.editCollectionsWindowSeriesOptionLabel = ctk.CTkLabel(self.editCollectionsWindow, text="Choose series: ", font=ctk.CTkFont(size=25, weight="bold"))
-        self.editCollectionsWindowSeriesOptionLabel.grid(row=2, column=0, sticky="nsew", padx=20, pady=20)
-        
         series = self.database.get_series_with_volumes()
-        self.editCollectionsWindowSeriesOptionMenu = ctk.CTkOptionMenu(self.editCollectionsWindow, width=150, values=series, command=self.editCollectionsSeries_callback)      
-        self.editCollectionsWindowSeriesOptionMenu.grid(row=2, column=1, sticky="w", padx=20, pady=20)
-        
-        self.volumesFrame = ctk.CTkScrollableFrame(self.editCollectionsWindow, width=450, height=150, corner_radius=3.5)
-        self.volumesFrame.grid(row=3, column=0, sticky="nsew", padx=20)
-        self.fill_volumes_frame(series[0])
-        
-        self.submitCollectionsButton = ctk.CTkButton(self.editCollectionsButton, text="Submit", command=self.submit_collections)
-        
+
+        if series != []:
+
+            self.editCollectionsWindowLabel = ctk.CTkLabel(self.editCollectionsWindow, text="Edit collections", font=ctk.CTkFont(size=35, weight="bold"))
+            self.editCollectionsWindowLabel.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+            
+            self.editCollectionsWindowUserOptionLabel = ctk.CTkLabel(self.editCollectionsWindow, text="Choose user: ", font=ctk.CTkFont(size=25, weight="bold"))
+            self.editCollectionsWindowUserOptionLabel.grid(row=1, column=0, sticky="nsew", padx=20, pady=20)
+            
+            self.editCollectionsWindowUserOptionMenu = ctk.CTkOptionMenu(self.editCollectionsWindow, width=150, values=self.database.get_all_user_names(), command=self.editCollectionsUser_callback)      
+            self.editCollectionsWindowUserOptionMenu.grid(row=1, column=1, sticky="w", padx=20, pady=20)
+            
+            self.editCollectionsWindowSeriesOptionLabel = ctk.CTkLabel(self.editCollectionsWindow, text="Choose series: ", font=ctk.CTkFont(size=25, weight="bold"))
+            self.editCollectionsWindowSeriesOptionLabel.grid(row=2, column=0, sticky="nsew", padx=20, pady=20)
+            
+            
+            self.editCollectionsWindowSeriesOptionMenu = ctk.CTkOptionMenu(self.editCollectionsWindow, width=150, values=series, command=self.editCollectionsSeries_callback)      
+            self.editCollectionsWindowSeriesOptionMenu.grid(row=2, column=1, sticky="w", padx=20, pady=20)
+            
+            self.volumesFrame = ctk.CTkScrollableFrame(self.editCollectionsWindow, width=450, height=150, corner_radius=3.5)
+            self.volumesFrame.grid(row=3, column=0, sticky="nsew", padx=20)
+            self.volumeList = self.fill_volumes_frame(series[0])
+            
+            self.submitCollectionsButton = ctk.CTkButton(self.editCollectionsWindow, text="Submit", command=self.submit_collections)
+            self.submitCollectionsButton.grid(row=4, column=0, padx=20, pady=20)
+
+            self.exitCollectionsButton = ctk.CTkButton(self.editCollectionsWindow, text="Cancel", command=self.editCollectionsWindow.destroy)
+            self.exitCollectionsButton.grid(row=4, column=1, padx=20, pady=20)
+
+        else:
+            self.editCollectionsWindowLabel = ctk.CTkLabel(self.editCollectionsWindow, text="Edit collections", font=ctk.CTkFont(size=35, weight="bold"))
+            self.editCollectionsWindowLabel.grid(row=0, column=0, sticky="nsew", padx=20, pady=20) 
+
+            self.editCollectionsNoVolumesLabel = ctk.CTkLabel(self.editCollectionsWindow, text="There are no volumes added to MangaShelf", font=ctk.CTkFont(size=35, weight="bold"))
+            self.editCollectionsNoVolumesLabel.grid(row=1, column=0, sticky="nsew", padx=20, pady=20) 
+
+    def submit_collections(self) -> None:
+        self.editCollectionsWindow.destroy()
+        for i in self.volumeList:
+            vol = self.database.check_collection_record(self.editCollectionsWindowSeriesOptionMenu.get(), i[1], self.editCollectionsWindowUserOptionMenu.get())
+            if i[2].get() == 1:
+                if vol[0] == True:
+                    if self.database.check_collection_active(vol[1]) == False:
+                        dbResponse = self.database.switch_volume_active(vol[1], 1)
+                        if dbResponse == "ok":
+                            CTkMessagebox(title="Success", message=f"{i[0]}: Added to your collection!", icon="check")
+                        else:
+                            CTkMessagebox(title="Error", message=f"{i[0]}Error: {dbResponse}!", icon="cancel")
+
+                else:
+                    dbResponse = self.database.add_volume_to_collection(self.editCollectionsWindowSeriesOptionMenu.get(), i[1], self.editCollectionsWindowUserOptionMenu.get())
+                    if dbResponse == "ok":
+                        CTkMessagebox(title="Success", message=f"{i[0]}: Added to your collection!", icon="check")
+                    else:
+                        CTkMessagebox(title="Error", message=f"{i[0]}Error: {dbResponse}!", icon="cancel")
+            else:
+                if vol[0] == True:
+                    if self.database.check_collection_active(vol[1]) == True:
+                        dbResponse = self.database.switch_volume_active(vol[1], 0)
+                        if dbResponse == "ok":
+                            CTkMessagebox(title="Success", message=f"{i[0]}: Removed from your collection!", icon="check")
+                        else:
+                            CTkMessagebox(title="Error", message=f"{i[0]}Error: {dbResponse}!", icon="cancel")
 
     def editCollectionsUser_callback(self, choice) -> None:
-        print("hehe")
+        self.volumesFrame.destroy()
+        self.volumesFrame = ctk.CTkScrollableFrame(self.editCollectionsWindow, width=300, height=150, corner_radius=3.5)
+        self.volumesFrame.grid(row=3, column=0, sticky="nsew", padx=20)
+        self.volumeList = self.fill_volumes_frame(self.editCollectionsWindowSeriesOptionMenu.get())
     
-    def fill_volumes_frame(self, seriesName: str) -> None:
+    def fill_volumes_frame(self, seriesName: str) -> list[ctk.CTkCheckBox]:
         volumes = self.database.get_series_volumes(seriesName)
         for i in range(len(volumes)):
             volume = ctk.CTkCheckBox(self.volumesFrame, text=volumes[i][0], font=ctk.CTkFont(size=15, weight="bold"))
+            volumes[i].append(volume)
+            vol_col = self.database.check_collection_record(self.editCollectionsWindowSeriesOptionMenu.get(), volumes[i][1], self.editCollectionsWindowUserOptionMenu.get())
+            if vol_col[0] == True:
+                if self.database.check_collection_active(vol_col[1]) == True:
+                    volume.select()
             volume.grid(row=i, column=0, padx=10, pady=10)
+        return volumes
+    
     def editCollectionsSeries_callback(self, choice) -> None:
         self.volumesFrame.destroy()
         self.volumesFrame = ctk.CTkScrollableFrame(self.editCollectionsWindow, width=300, height=150, corner_radius=3.5)
         self.volumesFrame.grid(row=3, column=0, sticky="nsew", padx=20)
-        self.fill_volumes_frame(choice)
+        self.volumeList = self.fill_volumes_frame(choice)
         
 
     def is_positive_integer(self, s: str) -> bool:
@@ -677,7 +835,11 @@ class Gui(ctk.CTk):
         self.homeFrame.destroy()
         self.create_homeFrame()
         self.select_frame_by_name("home")
-        
+
+    def refresh_list_frame(self) -> None:
+        self.listFrame.destroy()
+        self.create_listFrame()
+
     def refresh_add_frame(self) -> None:
         self.addFrame.destroy()
         self.create_addFrame()
@@ -790,4 +952,5 @@ class Gui(ctk.CTk):
         self.listFrame.grid(row=0, column=1, sticky="nsew") if name == "list" else self.listFrame.grid_forget()
         self.addFrame.grid(row=0, column=1, sticky="nsew") if name == "add" else self.addFrame.grid_forget()
         self.settingsFrame.grid(row=0, column=1, sticky="nsew") if name == "settings" else self.settingsFrame.grid_forget()
-        
+        if self.seriesFrame.winfo_exists() == 1:
+            self.seriesFrame.grid_forget()        

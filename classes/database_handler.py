@@ -83,6 +83,7 @@ class Database():
                                 read INT NOT NULL,
                                 borrowed INT NOT NULL,
                                 borrower INT,
+                                is_active INT NOT NULL,
                                 FOREIGN KEY (series_id) REFERENCES series(id),
                                 FOREIGN KEY (volume_id) REFERENCES volumes(id),
                                 FOREIGN KEY (user_id) REFERENCES users(id),
@@ -234,7 +235,16 @@ class Database():
             except sqlite3.Error as e:
                 print(e)
             return []
-        
+
+        def get_current_user_series(self) -> list[str]:
+            try:
+                userSeries = self.cursor.execute('''SELECT * FROM series WHERE id IN (SELECT DISTINCT series_id FROM collections WHERE user_id = ?);''', (self.currentUserId,))
+                records = userSeries.fetchall()
+                return [[record[0], record[1], record[2], record[3], record[4], record[5], record[6], record[7]] for record in records]
+            except sqlite3.Error as e:
+                print(e)
+            return []
+
         def get_series_id_by_series_title(self, title: str) -> int:
             try:
                 user = self.cursor.execute(f'''SELECT id FROM series WHERE title = ?;''', (title,))
@@ -245,6 +255,55 @@ class Database():
                 
             return -1
         
+        def check_collection_active(self, id: int) -> bool:
+            try:
+                query = self.cursor.execute('''SELECT is_active FROM collections WHERE id = ?;''', (id,))
+                return query.fetchone()[0]
+            except sqlite3.Error as e:
+                print(e)
+            return False
+
+        def switch_volume_active(self, vol_id: int, active: int) -> str:
+            try:
+                query = '''UPDATE collections SET is_active = ? WHERE id = ?;'''
+                dataTuple = (active, vol_id)
+                self.cursor.execute(query, dataTuple)
+                self.connection.commit()
+                return "ok"
+            except sqlite3.Error as e:
+                return e
+
+
+        def check_collection_record(self, seriesName: str, volumeId: int, userName: str) -> list:
+            seriesId = self.get_series_id_by_series_title(seriesName)
+            userId = self.get_user_id_by_user_name(userName)
+            try:
+                query = self.cursor.execute('''SELECT id FROM collections WHERE series_id = ? AND volume_id = ? AND user_id = ?;''', (seriesId, volumeId, userId))
+                record = query.fetchone()
+                
+                return [True, record[0]] if record != None else [False, []]
+            except sqlite3.Error as e:
+                print(e)
+            return []
+
+        def get_user_volumes_of_series(self, seriesId: int) -> list[list[str]]:
+            try:
+                volumes = self.cursor.execute('''SELECT * FROM volumes WHERE id IN (SELECT volume_id FROM collections WHERE series_id = ? AND user_id = ? AND is_active = 1);''', (seriesId, self.currentUserId))
+                records = volumes.fetchall()
+                finalList = [[records[i][0], records[i][1], records[i][3]] for i in range(len(records))]
+                read_borrow = '''SELECT read, borrowed, borrower FROM collections WHERE series_id = ? AND user_id = ? AND volume_id = ?;'''
+                for i in finalList:
+                    dataTuple = (seriesId, self.currentUserId, i[0])
+                    new_records = self.cursor.execute(read_borrow, dataTuple).fetchall()
+                    for j in new_records:
+                        i.append(j[0])
+                        i.append(j[1])
+                        i.append(j[2])
+                return finalList
+            except sqlite3.Error as e:
+                print(e)
+            return []
+
         def get_from_series(self, id: int) -> list:
             try:
                 series = self.cursor.execute(f'''SELECT * FROM series WHERE id = {id};''')
@@ -293,6 +352,27 @@ class Database():
             except sqlite3.Error as e:
                 return e
             
+        def add_volume_to_collection(self, seriesName: str, volumeId: int, userName: str) -> str:
+            seriesId = self.get_series_id_by_series_title(seriesName)
+            userId = self.get_user_id_by_user_name(userName)
+            try:
+                insertQuery = '''INSERT INTO collections (series_id, volume_id, user_id, read, borrowed, borrower, is_active) VALUES (?, ?, ?, ?, ?, ?, ?);'''
+                dataTuple = (seriesId, volumeId, userId, 0, 0, None, 1)
+                self.cursor.execute(insertQuery, dataTuple)
+                self.connection.commit()
+                return "ok"
+            except sqlite3.Error as e:
+                return e
+        
+        def get_volume_id_by_title(self, seriesId: int, volumeName: str) -> int:
+            try:
+                volId = self.cursor.execute('''SELECT Id FROM volumes WHERE series_id = ? AND title = ?;''', (seriesId, volumeName))
+                record = volId.fetchone()
+                return record[0]
+            except sqlite3.Error as e:
+                print(e)
+            return -1
+
         def update_volume(self, seriesId: int, seriesName: str, newTitle: str, oldTitle: str, cover: str) -> str:
             try:
                 id = self.cursor.execute("""SELECT id FROM volumes WHERE title = ? AND series_id = ?;""", (oldTitle, seriesId,)).fetchall()[0][0]
