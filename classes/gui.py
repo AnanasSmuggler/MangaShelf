@@ -86,25 +86,27 @@ class Gui(ctk.CTk):
             self.currUserProfilePictureLabel = ctk.CTkLabel(self.homeFrame, image=self.currUserProfilePicture, text="", compound="left")
             self.currUserProfilePictureLabel.grid(row=1, column=0, padx=20, pady=5, sticky="w")
             
-            self.collectionProggresLabel = ctk.CTkLabel(self.homeFrame, text="Collection progress:", font=ctk.CTkFont(size=35, weight="bold"))
-            self.collectionProggresLabel.grid(row=2, column=1, sticky="nsew", padx=20)
-            
-            self.placeholderHome = ctk.CTkLabel(self.homeFrame, text="", font=ctk.CTkFont(size=25, weight="bold"))
-            self.placeholderHome.grid(row=2, column=2, sticky="nsew", padx=70)
-            
             if userData[2] == 0:
-                self.collectionProggresLabel = ctk.CTkLabel(self.homeFrame, text="Currently you have no volumes on shelf", font=ctk.CTkFont(size=25, weight="bold"))
-                self.collectionProggresLabel.grid(row=3, column=1, sticky="w", padx=20)
+                self.collectionProggresLabel = ctk.CTkLabel(self.homeFrame, text="Collection progress:", font=ctk.CTkFont(size=35, weight="bold"))
+                self.collectionProggresLabel.grid(row=2, column=1, sticky="w", padx=20)
+                self.collectionProggresLabel2 = ctk.CTkLabel(self.homeFrame, text="Currently you have no volumes on shelf", font=ctk.CTkFont(size=25, weight="bold"))
+                self.collectionProggresLabel2.grid(row=3, column=1, sticky="w", padx=20)
+                self.readingProggresLabel = ctk.CTkLabel(self.homeFrame, text="Reading progress:", font=ctk.CTkFont(size=35, weight="bold"))
+                self.readingProggresLabel.grid(row=4, column=1, sticky="w", padx=20)
+                self.readingProggresLabel2 = ctk.CTkLabel(self.homeFrame, text="Currently you have no volumes on shelf", font=ctk.CTkFont(size=25, weight="bold"))
+                self.readingProggresLabel2.grid(row=5, column=1, sticky="w", padx=20)
+            else:
+                self.collectionProggresLabel = ctk.CTkLabel(self.homeFrame, text=f"Collection progress: [{userData[3]}/{self.database.get_sum_of_volumes()}]", font=ctk.CTkFont(size=30, weight="bold"))
+                self.collectionProggresLabel.grid(row=2, column=1, sticky="w", padx=20)
+                self.collectionProggresBar = ctk.CTkProgressBar(self.homeFrame, orientation="horizontal", mode="determinate")
+                self.collectionProggresBar.grid(row=3, column=1, sticky="ew", padx=20, pady=20)
+                self.collectionProggresBar.set(round(userData[2]/self.database.get_sum_of_volumes(), 2))
+                self.readingProggresLabel = ctk.CTkLabel(self.homeFrame, text=f"Reading progress: [{self.database.get_user_read_volumes()}/{userData[3]}]", font=ctk.CTkFont(size=30, weight="bold"))
+                self.readingProggresLabel.grid(row=4, column=1, sticky="w", padx=20)
+                self.readingProggresBar = ctk.CTkProgressBar(self.homeFrame, orientation="horizontal", mode="determinate")
+                self.readingProggresBar.grid(row=5, column=1, sticky="ew", padx=20, pady=20)
+                self.readingProggresBar.set(round(self.database.get_user_read_volumes()/userData[3], 2))
             
-            self.readingProggresLabel = ctk.CTkLabel(self.homeFrame, text="Reading progress:", font=ctk.CTkFont(size=35, weight="bold"))
-            self.readingProggresLabel.grid(row=4, column=1, sticky="nsew", padx=20)
-            
-            self.placeholderHome2 = ctk.CTkLabel(self.homeFrame, text="", font=ctk.CTkFont(size=25, weight="bold"))
-            self.placeholderHome2.grid(row=4, column=2, sticky="nsew", padx=70)
-            
-            if userData[3] == 0:
-                self.collectionProggresLabel = ctk.CTkLabel(self.homeFrame, text="Currently you have no volumes on shelf", font=ctk.CTkFont(size=25, weight="bold"))
-                self.collectionProggresLabel.grid(row=5, column=1, sticky="w", padx=20)
             
             self.userNameLabel = ctk.CTkLabel(self.homeFrame, text=userData[0], compound="left", font=ctk.CTkFont(size=25, weight="bold"))
             self.userNameLabel.grid(row=2, column=0, sticky="w", padx=20, pady=5)
@@ -145,7 +147,7 @@ class Gui(ctk.CTk):
                 else:
                     buttonText = f"{self.allSeries[i][1]} | {self.allSeries[i][2]}, {self.allSeries[i][3]}"
                 seriesButton = ctk.CTkButton(self.listFrame, corner_radius=0, height=120, border_spacing=20, text=buttonText, fg_color="transparent",
-                                            text_color=("gray10", "gray90"), font=ctk.CTkFont(size=25, weight="bold"), hover_color=("gray70", "gray30"), image=buttonImage, anchor="w", command= lambda: self.listButtonCommand(self.allSeries[i][0]))
+                                            text_color=("gray10", "gray90"), font=ctk.CTkFont(size=25, weight="bold"), hover_color=("gray70", "gray30"), image=buttonImage, anchor="w", command= lambda x=i: self.listButtonCommand(self.allSeries[x][0]))
                 seriesButton.grid(row=i+1, column=0, sticky="ew")
                 
 
@@ -154,6 +156,7 @@ class Gui(ctk.CTk):
         
     def listButtonCommand(self, seriesId: int) -> None:  # Update progress every 500 milliseconds
         self.listFrame.grid_forget()
+        self.seriesFrame = ctk.CTkScrollableFrame(self, corner_radius = 0, fg_color="transparent")
         self.seriesFrame.grid(row=0, column=1, sticky="nsew")
         self.seriesFrame.grid_columnconfigure(0, weight=1)
         seriesData = self.database.get_from_series(seriesId)
@@ -173,13 +176,13 @@ class Gui(ctk.CTk):
         self.seriesTitleLabel = ctk.CTkLabel(self.seriesFrame, text=seriesData[0], compound="left", font=ctk.CTkFont(size=30, weight="bold"))
         self.seriesTitleLabel.grid(row=1, column=1, padx=20, pady=20, sticky="nsew")
 
-        self.artSeriesLabel = ctk.CTkLabel(self.seriesFrame, text=f"Art: {seriesData[1]}", compound="left", font=ctk.CTkFont(size=25, weight="bold"))
+        self.artSeriesLabel = ctk.CTkLabel(self.seriesFrame, text=f"Art: {seriesData[1]}", compound="left", font=ctk.CTkFont(size=20, weight="bold"))
         self.artSeriesLabel.grid(row=2, column=0, padx=20, pady=20, sticky="nsew")
 
-        self.storySeriesLabel = ctk.CTkLabel(self.seriesFrame, text=f"Story: {seriesData[2]}", compound="left", font=ctk.CTkFont(size=25, weight="bold"))
+        self.storySeriesLabel = ctk.CTkLabel(self.seriesFrame, text=f"Story: {seriesData[2]}", compound="left", font=ctk.CTkFont(size=20, weight="bold"))
         self.storySeriesLabel.grid(row=3, column=0, padx=20, pady=20, sticky="nsew")
 
-        self.publisherSeriesLabel = ctk.CTkLabel(self.seriesFrame, text=f"Publisher: {seriesData[3]}", compound="left", font=ctk.CTkFont(size=25, weight="bold"))
+        self.publisherSeriesLabel = ctk.CTkLabel(self.seriesFrame, text=f"Publisher: {seriesData[3]}", compound="left", font=ctk.CTkFont(size=20, weight="bold"))
         self.publisherSeriesLabel.grid(row=4, column=0, padx=20, pady=20, sticky="nsew")
 
         self.progressSeriesLabel = ctk.CTkLabel(self.seriesFrame, text=f"{len(volumesData)}/{seriesData[4]} volumes collected", compound="left", font=ctk.CTkFont(size=25, weight="bold"))
@@ -196,8 +199,11 @@ class Gui(ctk.CTk):
 
         for i in range(len(volumesData)):
 
+            if not os.path.exists(os.path.join(self.imagePath, f"volumes_covers\\{seriesData[0].lower().replace(' ', '_')}")):
+                os.makedirs(os.path.join(self.imagePath, f"volumes_covers\\{seriesData[0].lower().replace(' ', '_')}"))
+
             if not os.path.exists(os.path.join(self.imagePath, f"volumes_covers\\{seriesData[0].lower().replace(' ', '_')}\\{volumesData[i][1].lower().replace(' ', '_')}.png")):
-                self.database.write_to_file(volumesData[2], os.path.join(self.imagePath, f"volumes_covers\\{seriesData[0].lower().replace(' ', '_')}\\{volumesData[i][1].lower().replace(' ', '_')}.png"))
+                self.database.write_to_file(volumesData[i][2], os.path.join(self.imagePath, f"volumes_covers\\{seriesData[0].lower().replace(' ', '_')}\\{volumesData[i][1].lower().replace(' ', '_')}.png"))
 
             volumeImage = ctk.CTkImage(light_image = Image.open(os.path.join(self.imagePath, f"volumes_covers\\{seriesData[0].lower().replace(' ', '_')}\\{volumesData[i][1].lower().replace(' ', '_')}.png")), size=(250,300))
             volumeImageLabel = ctk.CTkLabel(self.volumeSeriesFrame, text="", image=volumeImage)
@@ -205,37 +211,78 @@ class Gui(ctk.CTk):
 
             volumeTitleLabel = ctk.CTkLabel(self.volumeSeriesFrame, text=volumesData[i][1], compound="left", font=ctk.CTkFont(size=20, weight="bold"))
             volumeTitleLabel.grid(row=i, column=1, sticky="nsew", padx=20, pady=20)
-
-            volumeReadSwitchVar = ctk.IntVar()
-            volumeBorrowSwitchVar = ctk.IntVar()
-
-            if volumesData[i][3] == 1:
-                volumeReadSwitchVar.set(1)
-            else:
-                volumeReadSwitchVar.set(0)
-
-            if volumesData[i][4] == 1:
-                volumeBorrowSwitchVar.set(1)
-            else:
-                volumeBorrowSwitchVar.set(0)
             
-            self.switchVarsData.append([volumeReadSwitchVar.get(), volumeBorrowSwitchVar.get()])
-            volumeReadSwitch = ctk.CTkSwitch(self.volumeSeriesFrame, text="Read", font=ctk.CTkFont(size=20, weight="bold"), variable=volumeReadSwitchVar, onvalue=1, offvalue=0, command=lambda: self.update_read(volumesData[i][0], seriesId, self.switchVarsData[i][0], i))
+            volumeReadSwitch = ctk.CTkSwitch(self.volumeSeriesFrame, text="Read", font=ctk.CTkFont(size=20, weight="bold"), command=lambda x=i: self.update_read(volumesData[x][0], seriesId, self.switchVarsData[x][0]))
             volumeReadSwitch.grid(row=i, column=2, sticky="nsew", padx=20, pady=20)
+            
 
-            volumeBorrowedSwitch = ctk.CTkSwitch(self.volumeSeriesFrame, text="Borrowed", font=ctk.CTkFont(size=20, weight="bold"))
+            volumeBorrowedSwitch = ctk.CTkSwitch(self.volumeSeriesFrame, text="Borrowed", font=ctk.CTkFont(size=20, weight="bold"), command=lambda x=i: self.update_borrowed(volumesData[x][0], seriesId, self.switchVarsData[x][1], x))
             volumeBorrowedSwitch.grid(row=i, column=3, sticky="nsew", padx=20, pady=20)
+            
+            if volumesData[i][3] == 1:
+                volumeReadSwitch.select()
+            
+            if volumesData[i][4] == 1:
+                self.borrowerMainLabel = ctk.CTkLabel(self.volumeSeriesFrame, text=self.database.get_user_name_by_user_id(volumesData[i][5]), compound="left", font=ctk.CTkFont(size=20, weight="bold"))
+                self.borrowerMainLabel.grid(row=i, column=4, padx=20, pady=20, sticky="nsew")
+                volumeBorrowedSwitch.select()
+                
+            self.switchVarsData.append([volumeReadSwitch, volumeBorrowedSwitch])
 
-    def update_read(self, volumeId: int, seriesId: int, value: int, i: int) -> None:
-        #dbResponse = self.database.update_read(volumeId, seriesId, )
-        print(f"test {value}")
-        if value == 1:
-            self.switchVarsData[i][0] = 0
+    def update_read(self, volumeId: int, seriesId: int, switch: ctk.CTkSwitch) -> None:
+        dbResponse = self.database.update_read(volumeId, seriesId, switch.get())
+        if dbResponse != "ok":
+            if switch.get() == 1:
+                switch.deselect()
+            else:
+                switch.select()
+                
+    def update_borrowed(self, volumeId: int, seriesId: int, switch: ctk.CTkSwitch, i: int) -> None:
+        if switch.get() == 1:
+            self.borrowerWindow = ctk.CTkToplevel(self)
+            self.borrowerWindow.title("Edit Series")
+            self.borrowerWindow.geometry("500x150")
+            self.borrowerWindow.grab_set()
+            
+            self.borrowerLabel = ctk.CTkLabel(self.borrowerWindow, text=f"Choose Borrower: ", compound="left", font=ctk.CTkFont(size=20, weight="bold"))
+            self.borrowerLabel.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+            
+            userList = self.database.get_all_user_names()
+            userList.remove(self.database.get_user_name_by_user_id(self.database.currentUserId))
+            
+            self.borrowerOptionMenu = ctk.CTkOptionMenu(self.borrowerWindow, values=userList)
+            self.borrowerOptionMenu.grid(row=0, column=1, padx=20, pady=20)
+            
+            self.submitBorrower = ctk.CTkButton(self.borrowerWindow, text="Submit", command=lambda: self.submit_borrower(volumeId, seriesId, self.database.get_user_id_by_user_name(self.borrowerOptionMenu.get()), switch, i))
+            self.submitBorrower.grid(row=1, column=0, sticky="nsew", padx=20, pady=20)
+            
+            self.cancelBorrower = ctk.CTkButton(self.borrowerWindow, text="Cancel", command=lambda: self.cancel_borrower(switch))
+            self.cancelBorrower.grid(row=1, column=1, padx=20, pady=20, sticky="nsew")
         else:
-            self.switchVarsData[i][0] = 1
-    
+            dbResponse = self.database.update_borrower(volumeId, seriesId, None, 0)
+            if dbResponse != "ok":
+                if switch.get() == 1:
+                    switch.deselect()
+                else:
+                    switch.select()
+            else:
+                self.borrowerMainLabel.grid_forget()
+        
+    def submit_borrower(self, volumeId: int, seriesId: int, userId: int, switch: ctk.CTkSwitch, i: int) -> None:
+        self.borrowerWindow.destroy()
+        dbResponse = self.database.update_borrower(volumeId, seriesId, userId, 1)
+        if dbResponse != "ok":
+            if switch.get() == 1:
+                switch.deselect()
+            else:
+                switch.select()
+        else:
+            self.borrowerMainLabel = ctk.CTkLabel(self.volumeSeriesFrame, text=self.database.get_user_name_by_user_id(userId), compound="left", font=ctk.CTkFont(size=20, weight="bold"))
+            self.borrowerMainLabel.grid(row=i, column=4, padx=20, pady=20, sticky="nsew")
+
     def go_back_button(self) -> None:
         self.seriesFrame.grid_forget()
+        self.seriesFrame.destroy()
         self.select_frame_by_name("list")
 
     def create_addFrame(self) -> None:
@@ -704,14 +751,22 @@ class Gui(ctk.CTk):
                     if self.database.check_collection_active(vol[1]) == False:
                         dbResponse = self.database.switch_volume_active(vol[1], 1)
                         if dbResponse == "ok":
-                            CTkMessagebox(title="Success", message=f"{i[0]}: Added to your collection!", icon="check")
+                            dbResponse2 = self.database.update_collection_amount(self.editCollectionsWindowUserOptionMenu.get())
+                            if dbResponse2 == "ok":
+                                CTkMessagebox(title="Success", message=f"{i[0]}: Added to your collection!", icon="check")
+                            else:
+                                CTkMessagebox(title="Error", message=f"{i[0]}Error: {dbResponse2}!", icon="cancel")
                         else:
                             CTkMessagebox(title="Error", message=f"{i[0]}Error: {dbResponse}!", icon="cancel")
 
                 else:
                     dbResponse = self.database.add_volume_to_collection(self.editCollectionsWindowSeriesOptionMenu.get(), i[1], self.editCollectionsWindowUserOptionMenu.get())
                     if dbResponse == "ok":
-                        CTkMessagebox(title="Success", message=f"{i[0]}: Added to your collection!", icon="check")
+                        dbResponse2 = self.database.update_collection_amount(self.editCollectionsWindowUserOptionMenu.get())
+                        if dbResponse2 == "ok":
+                            CTkMessagebox(title="Success", message=f"{i[0]}: Added to your collection!", icon="check")
+                        else:
+                            CTkMessagebox(title="Error", message=f"{i[0]}Error: {dbResponse2}!", icon="cancel")
                     else:
                         CTkMessagebox(title="Error", message=f"{i[0]}Error: {dbResponse}!", icon="cancel")
             else:
@@ -719,7 +774,11 @@ class Gui(ctk.CTk):
                     if self.database.check_collection_active(vol[1]) == True:
                         dbResponse = self.database.switch_volume_active(vol[1], 0)
                         if dbResponse == "ok":
-                            CTkMessagebox(title="Success", message=f"{i[0]}: Removed from your collection!", icon="check")
+                            dbResponse2 = self.database.update_collection_amount(self.editCollectionsWindowUserOptionMenu.get())
+                            if dbResponse2 == "ok":
+                                CTkMessagebox(title="Success", message=f"{i[0]}: Removed from your collection!", icon="check")
+                            else:
+                                CTkMessagebox(title="Error", message=f"{i[0]}Error: {dbResponse2}!", icon="cancel")
                         else:
                             CTkMessagebox(title="Error", message=f"{i[0]}Error: {dbResponse}!", icon="cancel")
 

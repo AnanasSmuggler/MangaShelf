@@ -142,6 +142,21 @@ class Database():
                 
             return []
         
+        def get_sum_of_volumes(self) -> int:
+            try:
+                query = self.cursor.execute('''SELECT SUM(volumes_published) FROM series WHERE id IN (SELECT DISTINCT series_id FROM collections WHERE user_id = ?);''', (self.currentUserId,)).fetchone()
+                return query[0]
+            except sqlite3.Error as e:
+                print(e)
+            return -1
+        
+        def get_user_read_volumes(self) -> int:
+            try:
+                query = self.cursor.execute('''SELECT COUNT(id) FROM collections WHERE user_id = ? AND is_active = ? AND read = ?;''', (self.currentUserId, 1, 1)).fetchone()
+                return query[0]
+            except sqlite3.Error as e:
+                print(e)
+            return -1
         def get_all_user_names(self) -> list[str]:
             try:
                 users = self.cursor.execute('''SELECT name FROM users;''')
@@ -160,6 +175,14 @@ class Database():
                 print(e)
                 
             return -1
+        
+        def get_user_name_by_user_id(self, id: int) -> str:
+            try:
+                user = self.cursor.execute(f'''SELECT name FROM users WHERE id = ?;''', (id,))
+                record = user.fetchone()
+                return record[0]
+            except sqlite3.Error as e:
+                return e
         
         def update_user(self, newUserName: str, oldUserName: str, profilePicture: str) -> str:
             try:
@@ -329,6 +352,45 @@ class Database():
             except sqlite3.Error as e:
                 return e
             
+        def update_read(self, volumeId: int, seriesId: int, value: int) -> str:
+            try:
+                
+                updateQuery = '''UPDATE collections SET read = ? WHERE user_id = ? AND volume_id = ? AND series_id = ?;'''
+                dataTuple = (value, self.currentUserId, volumeId, seriesId)
+                print(dataTuple)
+                self.cursor.execute(updateQuery, dataTuple)
+                self.connection.commit()
+                return "ok"
+            except sqlite3.Error as e:
+                return e
+            
+        def update_borrower(self, volumeId: int, seriesId: int, userId: int, value: int) -> str:
+            try:
+                updateQuery = '''UPDATE collections SET borrowed = ?, borrower = ? WHERE user_id = ? AND volume_id = ? AND series_id = ?;'''
+                dataTuple = (value, userId, self.currentUserId, volumeId, seriesId)
+                print(dataTuple)
+                self.cursor.execute(updateQuery, dataTuple)
+                self.connection.commit()
+                return "ok"
+            except sqlite3.Error as e:
+                print(e)
+                return e
+        
+        def update_collection_amount(self, userName: str) -> str:
+            try:
+                selectSeries = self.cursor.execute('''SELECT COUNT(DISTINCT series_id) FROM collections WHERE user_id = ? AND is_active = ?;''', (self.get_user_id_by_user_name(userName), 1)).fetchone()
+                selectVolumes = self.cursor.execute('''SELECT COUNT(volume_id) FROM collections WHERE user_id = ? AND is_active = ?;''', (self.get_user_id_by_user_name(userName), 1)).fetchone()
+                updateQuery = '''UPDATE users SET series_amount = ?, volumes_amount = ? WHERE id = ?;'''
+                dataTuple = (selectSeries[0], selectVolumes[0], self.get_user_id_by_user_name(userName))
+                print(dataTuple)
+                self.cursor.execute(updateQuery, dataTuple)
+                self.connection.commit()
+                return "ok"
+            except sqlite3.Error as e:
+                print(e)
+                return e
+        
+        
         def get_volumes_from_series(self, seriesId: int) -> list[str]:
             try:
                 users = self.cursor.execute('''SELECT title FROM volumes WHERE series_id = ?;''', (seriesId,))
